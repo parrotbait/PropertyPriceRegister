@@ -1,0 +1,44 @@
+{
+  "name": "housepricecheck",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "debug": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@google/markerclusterer": "^1.0.3",
+    "async-mutex": "^0.1.4",
+    "atob": "^2.1.2",
+    "bluebird": "^3.7.2",
+    "bootstrap": "^4.3.1",
+    "btoa": "^1.2.1",
+    "csv-parser": "^2.3.2",
+    "knex": "^0.20.7",
+    "leaflet.markercluster": "^1.4.1",
+    "moment": "^2.24.0",
+    "mysql": "^2.17.1",
+    "node-js-marker-clusterer": "^1.0.0",
+    "react-bootstrap": "^1.0.0-beta.10",
+    "xml-js": "^1.6.9"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-node": "^8.0.0",
+    "eslint-plugin-promise": "^4.0.1",
+    "eslint-plugin-standard": "^4.0.0",
+    "export-to-csv": "latest",
+    "nodemailer": "latest",
+    "papaparse": "latest",
+    "prettier": "^1.16.0",
+    "request": "latest",
+    "request-promise": "latest",
+    "rimraf": "latest",
+    "winston": "latest",
+    "xmlbuilder": "latest"
+  }
+}

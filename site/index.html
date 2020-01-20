@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      /* Set the size of the div element that contains the map */
+      #map {
+        height: 600px;  /* The height is 400 pixels */
+        width: 100%;  /* The width is the width of the web page */
+       }
+    </style>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <script type="text/javascript" src="js/index.js"></script>
+
+    <script src="https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/markerclusterer.js" > </script>
+  </head>
+  <body>
+    <h3>Property Price Register Demo</h3>
+    <!--The div element for the map -->
+    <div id="map"></div>
+    <script>
+
+function formatMoney (value, n, x) {
+    var re = '\\d(?=(\\d{' + (x || 3) + '})+' + (n > 0 ? '\\.' : '$') + ')';
+    return value.toFixed(Math.max(0, ~~n)).replace(new RegExp(re, 'g'), '$&,');
+};
+
+
+// Initialize and add the map
+function initMap() {
+  let filterParams = {
+    start_date: "2019-01-01"
+  }
+  loadData(filterParams, function(properties, error) {
+    if (properties != null) {
+      // The location of Dublin
+      var dublin = {lat:53.3498, lng: -6.2603};
+      // The map, centered at Uluru
+      var map = new google.maps.Map(document.getElementById('map'), {zoom: 7, center: dublin});
+        
+        var lastInfoWindow = null
+        let markers = []
+        for (let i = 0; i < properties.length; ++i) {
+            let latLng = new google.maps.LatLng(Number(properties[i].lat),Number(properties[i].lon));
+            let marker = new google.maps.Marker({
+                position: latLng,
+                title: properties[i].address,
+                map: map
+            });
+            let contentString = '<div id="content">'+
+                '<div">'+
+                '</div>'+
+                '<h2 id="firstHeading">' + properties[i].address + '</h2>'+
+                '<div id="bodyContent"><table width="75%"><tr><th align="left">Date</th><th align="left">Price</th></tr>';
+            for (let j = 0; j < properties[i].sales.length; ++j) {
+                const sale = properties[i].sales[j];
+                contentString += '<tr>'
+                contentString += '<td align="left">' + sale.date.day + '/' + sale.date.month + '/' + sale.date.year + '</td>' 
+                let res = formatMoney(parseInt(sale.price));
+                contentString += '<td align="left"><strong>€' + res + '</strong></td>'
+                contentString += '</tr>'
+                
+            }
+            contentString += '</table></div>'+
+                '<hr>' +
+                '<p>Note: All data has been sourced from the Property Price Register of Ireland.</p>' +
+                '<p>This data is not always reliable.</p>' +
+                '<p>See <a href="https://medium.com/@parrotbait/the-property-price-register-a-rant-f55ca421e798" target="_blank">here</a> for more info of the flaws.</p>' +
+                '</div>';
+            let infowindow = new google.maps.InfoWindow({
+              content: contentString
+            });
+            marker.addListener('click', function() {
+                console.log(contentString)
+                if (lastInfoWindow && lastInfoWindow != infowindow) {
+                    lastInfoWindow.close()
+                }
+                infowindow.open(map, marker);
+                lastInfoWindow = infowindow
+            }); 
+            markers.push(marker)
+            /*map.addListener('center_changed', function() {
+                
+            });
+
+            marker.addListener('click', function() {
+                
+            });*/
+        }
+        var markerCluster = new MarkerClusterer(map, markers,
+                {imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m'});
+        }
+  }) 
+  
+  //var marker = new google.maps.Marker({position: dublin, map: map});
+}
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAQKJRuvEAYe13uEndZQ5spJMWCgIi2Xa8&callback=initMap">
+    </script>
+  </body>
+</html>
