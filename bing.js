@@ -18,7 +18,7 @@ const NO_ERROR = 0
 const UNKNOWN_ERROR = 1
 const QUOTA_ERROR = 2
 
-function startGeocodeJob(xml_file, config) {
+async function startGeocodeJob(xml_file, config) {
     const url = 'https://spatial.virtualearth.net/REST/v1/dataflows/geocode?input=xml&key=' + bingApiKey
     console.log('Bing url (Geocode Job Create) ' + url)
     return new Promise((resolve, reject) => { 
@@ -137,61 +137,64 @@ function parseGeocodeSuccessResultData(response, onAddressDeterminedCallback) {
     return new Promise((resolve, reject) => { 
         var options = {ignoreComment: true, alwaysChildren: true}
         let root = xmlConverter.xml2js(response, options)
-        if (typeof(root) === 'object' && root.elements) {
-            let feed = root.elements
-            if (Array.isArray(feed) && feed.length > 0) {
-                let feedRoot = feed[0]
-                if (feedRoot.hasOwnProperty('elements')) {
-                    let entities = feed[0].elements
-                    if (Array.isArray(entities) && entities.length) {
-                        for (let i = 0; i < entities.length; i++) {
-                            let entity = entities[i]
-                            let address = utils.decodeBase64(entity.attributes.Id)
-                            let elements = entity.elements
-                            for (let j = 0; j < elements.length; ++j) {
-                                let elem = elements[j]
-                                if (elem.name === 'GeocodeResponse') {
-                                    if (elem.elements.length != 5) {
-                                        console.log('Expected 5 elements returned!')
-                                        process.exit()
-                                    }
-                                    
-                                    console.log('Confidence ' + elem.attributes.Confidence)
-                                    // <Address AddressLine="14 Beaufield Grove" AdminDistrict="County Kildare" CountryRegion="Ireland" 
-                                    // FormattedAddress="14 Beaufield Grove, Naas, County Kildare, W23 Y7K8, Ireland" 
-                                    // Locality="Naas" PostalCode="W23 Y7K8" />
-                                    let addressComponents = elem.elements[0]
-                                    // elements 1,2,3 don't 'appear' to be relevant
-                                    //let geocodePoint = elem.elements[1]
-                                    //let geocodePoint = elem.elements[2]
-                                    //let address = elem.elements[3]
-                                    // <Point Latitude="53.37383" Longitude="-6.5989" />
-                                    let point = elem.elements[4]
-                                    let lat = point.attributes.Latitude
-                                    let lon = point.attributes.Longitude
-
-                                    var addressResult = {}
-                                    addressResult.address_components = addressComponents.attributes
-                                    addressResult.address = addressComponents.attributes.FormattedAddress
-                                    addressResult.lat = lat
-                                    addressResult.lon = lon
-                                    addressResult.place_id = entity.attributes.Id
-
-                                    onAddressDeterminedCallback(address, addressResult, null)
-                                }
-                            }
-                        }
-                    } else {
-                        return reject('Missing or invalid size entities array')
-                    }
-                } else {
-                    return reject('Missing \'elements\' key')
-                }                
-            } else {
-                return reject('Missing or invalid size feed array')
-            }
-        } else {
+        
+        if (typeof(root) !== 'object' || !root.elements) {
             return reject('Missing or invalid root object element')
+        }
+        let feed = root.elements
+        if (!Array.isArray(feed) || feed.length == 0) {
+            return reject('Missing or invalid size feed array')
+        }
+        let feedRoot = feed[0]
+        if (!feedRoot.hasOwnProperty('elements')) {
+            return reject('Missing \'elements\' key')
+        }
+        let entities = feed[0].elements
+        if (!Array.isArray(entities) || entities.length == 0) {
+            return reject('Missing or invalid size entities array')
+        }
+        for (let i = 0; i < entities.length; i++) {
+            let entity = entities[i]
+            let address = utils.decodeBase64(entity.attributes.Id)
+            let elements = entity.elements
+            for (let j = 0; j < elements.length; ++j) {
+                let elem = elements[j]
+                if (elem.name === 'GeocodeResponse') {
+                    if (elem.elements.length != 5) {
+                        console.log('Expected 5 elements returned!')
+                        process.exit()
+                    }
+                    
+                    let attributes = elem.attributes
+                    if (attributes.EntityType && 
+                        attributes.EntityType.toLowerCase() !== 'address') {
+                        onAddressDeterminedCallback(address, null, null)
+                        return resolve(true)
+                    }
+                    console.log('Confidence ' + elem.attributes.Confidence)
+                    // <Address AddressLine="14 Beaufield Grove" AdminDistrict="County Kildare" CountryRegion="Ireland" 
+                    // FormattedAddress="14 Beaufield Grove, Naas, County Kildare, W23 Y7K8, Ireland" 
+                    // Locality="Naas" PostalCode="W23 Y7K8" />
+                    let addressComponents = elem.elements[0]
+                    // elements 1,2,3 don't 'appear' to be relevant
+                    //let geocodePoint = elem.elements[1]
+                    //let geocodePoint = elem.elements[2]
+                    //let address = elem.elements[3]
+                    // <Point Latitude="53.37383" Longitude="-6.5989" />
+                    let point = elem.elements[4]
+                    let lat = point.attributes.Latitude
+                    let lon = point.attributes.Longitude
+
+                    let addressResult = {}
+                    addressResult.address_components = addressComponents.attributes
+                    addressResult.address = addressComponents.attributes.FormattedAddress
+                    addressResult.lat = lat
+                    addressResult.lon = lon
+                    addressResult.place_id = entity.attributes.Id
+
+                    onAddressDeterminedCallback(address, addressResult, null)
+                }
+            }
         }
         return resolve(true)
     })
@@ -338,16 +341,6 @@ async function batchGeocodeProcessXml(xml_file, config, onAddressDeterminedCallb
     return processGeocodeJobRequest(url, 0, config, onAddressDeterminedCallback)
 }
 
-async function commitEverything() {
-    return new Promise((resolve, rejected) => {
-        exec_process.runCommand('./commit_bing.sh').then(result => {
-            resolve(result)
-        }).catch((err) => {
-            rejected(err)
-        })
-    })
-}
-
 module.exports = {
     processData: async function(config, onAddressDeterminedCallback) {
         bingDataDirectory = utils.getConfigKey('bing_data_directory', config)
@@ -381,7 +374,6 @@ module.exports = {
                         bingApiKey = bingApiKeys[bingApiIndex]
                     } else {
                         console.log('All bing API keys used')
-                        await commitEverything()
                         await email.sendEmail(config, i, 'All keys used')
                         break
                     }
@@ -390,7 +382,6 @@ module.exports = {
             
             if (res != NO_ERROR) {
                 console.log('Failed to get bing data')
-                await commitEverything()
                 await email.sendEmail(config, i, 'Some error')
                 process.exit()
             } 
@@ -398,7 +389,7 @@ module.exports = {
             rimraf.sync(filePath)
         }
     },
-    outputXmlRequestsFiles: function(properties, config) {
+    outputXmlRequestsFiles: function(properties, counties, config) {
         bingDataDirectory = utils.getConfigKey('bing_data_directory', config)
         let xml = builder.create('GeocodeFeed').att('xmlns', 'http://schemas.microsoft.com/search/local/2010/5/geocode').att('Version', '2.0')  
         let num_iterations = 0
@@ -410,19 +401,25 @@ module.exports = {
             rimraf.sync(bingPath)
         }
         fs.mkdirSync(bingPath)
-        for(const [key, property] of Object.entries(properties)) {
-            if (property.propertyType == constants.HOUSE_TYPE_UNKNOWN) continue
+        for (let i = 0; i < properties.length; ++i) {
+            const property = properties[i]
             // Ignore properties that already have decoded places
-            if (property.placeId) continue
-            
-            const stringHash = utils.encodeBase64(address)
+            if (property.place_id) continue
+
+            let county = Object.keys(counties).reduce((p, c) => { 
+                if (counties[c] === property.county) p = {id: counties[c], name: c}
+                return p;
+              }, {})
+
+            if (!county) continue
+            const stringHash = utils.encodeBase64(property.original_address)
             var node = xml.ele('GeocodeEntity', {Id: stringHash, xmlns: 'http://schemas.microsoft.com/search/local/2010/5/geocode'})
             node.ele('GeocodeRequest', {
                 Culture: 'en-IE', 
                 IncludeNeighborhood: '0', 
                 IncludeEntityTypes: '0', 
                 MaxResults: '1', 
-                Query: address + ',' + county + ',Ireland'
+                Query: property.original_address + ',' + county.name + ',Ireland'
             })
             count++
             if (count >= records_per_file) {

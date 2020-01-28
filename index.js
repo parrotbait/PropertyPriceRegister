@@ -287,12 +287,12 @@ async function processCSVRowInternal(trx, row, context) {
     const original_address = row.address
     if (!original_address) return false
     const original_address_upper = original_address.toUpperCase()
-    const original_address_sql = mysql_real_escape_string(original_address_upper)
 
     const address = fixAddress(original_address)
     if (!address) {       
         console.log('Ignoring property with invalid address: ' + JSON.stringify(original_address))
 
+        const original_address_sql = mysql_real_escape_string(original_address_upper)
         // Use the CSV address for the reject records
         //await trx('properties').where('original_address', original_address_upper).del()
         return await datasource.insert(trx, 'rejected', `upper(original_address) = '${original_address_sql}'`, 'original_address', original_address_upper)
@@ -350,6 +350,16 @@ async function syncPropertySales(trx, address, row, property, current_sale) {
     return await trx('sales').insert({ property_id: property.id, price: current_sale.price, date: sql_date })
 }
 
+async function outputBingFiles(counties) {
+    const trx = await knex.transaction()
+    try {
+        const properties = await trx('properties').select('*').whereNull('place_id')
+        bing.outputXmlRequestsFiles(properties, counties, config)
+    } catch (err) {
+        console.log(err)
+    }
+}
+
 async function processCSVFile(input_path, context) {
     const file = fs.createReadStream(input_path)
     const { knex } = context
@@ -405,12 +415,14 @@ async function processCSVFile(input_path, context) {
                 throw err
             }
             await trx.commit()
+
+            let counties = context.counties
+            await outputBingFiles(counties)
         }
         console.log('Finished processing records')
         process.exit(0)
     })
 }
-
 
 async function outputRejected(file) {
     let final_path = path.join(__dirname, file)
@@ -422,56 +434,49 @@ async function outputRejected(file) {
         if (i % 100 == 0) {
             console.log(`Processing ${i}/${rejected_items.length}`)
         }
-        if (i % 1001 == 0) {
+        if (i % 3001 == 0) {
             await trx.commit()
             trx = await knex.transaction()
         }
         const address_upper = item.address.toUpperCase()
-        await datasource.insert(trx, 'properties', null, 'original_address', original_address_upper, { original_address: original_address_upper, county: countryId })
-
-        await datasource.insert(trx, 'properties', `upper(original_address) = "${address_upper}"`, { original_address: address_upper, county: countryId })
+        const address_upper_safe = mysql_real_escape_string(address_upper)
+        await datasource.insert(trx, 'rejected', `upper(original_address) = '${address_upper_safe}'`, 'original_address', address_upper)
     }
     await trx.commit()
+    trx = await knex.transaction()
+}
+
+async function updateAddressForBingResult(trx, existing_address, bing_result) {
+    if (!bing_result || !bing_result.place_id) { 
+        // Remove so it's not re-processed
+        await trx('properties').where('original_address', existing_address).del()
+        const address_upper = existing_address.toUpperCase()
+        const address_upper_safe = mysql_real_escape_string(existing_address)
+        console.log(`Rejecting property ${address_upper}`)
+        await datasource.insert(trx, 'rejected', `upper(original_address) = '${address_upper_safe}'`, 'original_address', address_upper)
+        return 
+    }
+    console.log(`Updating property with original address ${existing_address} to ${bing_result.address}`) 
+    await trx('properties').where('original_address', existing_address)
+                            .whereNull('address') // NOTE: this means it will only update once
+                            .update({address: bing_result.address,
+                                place_id: bing_result.place_id,
+                                lat: bing_result.lat,
+                                lon: bing_result.lon,
+                                updated: moment().utc().format('hh:mm:ss')
+                            })
 }
 
 async function processPendingPPRRecords(source, mode) {
-    let json = utils.loadJsonFromDisk(input_path)
-    let output = utils.loadJsonFromDisk(processed_record_path) || []
-    let rejected = utils.loadJsonFromDisk(rejected_record_path) || []
-    
-    let num_entries_processed = 0
-    let result_json_output_frequency = 50
-    
-    let onAddressDetermined = function(address, addressResult) {
-        let property = json[address]
-        if (!property) return
-        if (addressResult && addressResult.place_id) {
-            console.log('Processed address: ' + addressResult.address)
-            property.placeId = addressResult.place_id
-        } else {
-            console.log('Failed to processed address: ' + address)
-            property.placeId = 'invalid'
+    let onAddressDetermined = async function(address, addressResult) {
+        const trx = await knex.transaction()
+        try {
+            await updateAddressForBingResult(trx, address, addressResult)
+        } catch (err) {
+            console.log(err)
+            throw err
         }
-        property.geocodeSource = source
-
-        if (addressResult) {
-            addressResult.sales = []
-            for (let idx = 0; idx < property.sales.length; ++idx) {
-                const propInfo = property.sales[idx]
-                addressResult.sales.push({price: propInfo.price, date: propInfo.date})
-            }
-
-            output.push(addressResult)
-        } else {
-            rejected.push({address: address, source: source})
-        }
-        
-        if (++num_entries_processed >= result_json_output_frequency) {
-            num_entries_processed = 0
-            utils.outputJsonToDisk(input_path, json, false)
-            utils.outputJsonToDisk(processed_record_path, output, false)
-            utils.outputJsonToDisk(rejected_record_path, rejected, false)
-        }
+        await trx.commit()
     }
     // Bing is special, it processes xml files already created on disk
     if (source === 'bing') {
@@ -521,27 +526,16 @@ let valid = false
 const mode = args[2]
 switch (mode) {
     case 'find': {
-        if (args.length >= 7) {
+        if (args.length >= 4) {
             const source = args[3]
-            const input_resource_path = args[4]
-            const output_resource_path = args[5]
-            const rejected_resource_path = args[6]
-
-            if (!fs.existsSync(input_resource_path)) {
-                console.log('Missing file at path: ' + input_resource_path)
-                process.exit()
+            
+            try {
+                processPendingPPRRecords(source, mode).then((result) => {})
+            } catch (err) {
+                console.log(err)
+                throw err
             }
-
-            const extension = utils.getFileExtension(input_resource_path)   
-            if (extension === 'json') {
-                valid = true
-                try {
-                    processPPRJsonFile(source, input_resource_path, output_resource_path, rejected_resource_path, mode).then((result) => {})
-                } catch (err) {
-                    console.log(err)
-                    throw err
-                }
-            }
+            valid = true
         }
         break
     }
