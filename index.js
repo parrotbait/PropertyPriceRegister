@@ -292,10 +292,7 @@ async function processCSVRowInternal(trx, row, context) {
     if (!address) {       
         console.log('Ignoring property with invalid address: ' + JSON.stringify(original_address))
 
-        const original_address_sql = mysql_real_escape_string(original_address_upper)
-        // Use the CSV address for the reject records
-        //await trx('properties').where('original_address', original_address_upper).del()
-        return await datasource.insert(trx, 'rejected', `upper(original_address) = '${original_address_sql}'`, 'original_address', original_address_upper)
+        await addToRejected(trx, original_address)
     }
     
     const existing_rejected = await trx('rejected').select('*')
@@ -358,6 +355,7 @@ async function outputBingFiles(counties) {
     } catch (err) {
         console.log(err)
     }
+    await trx.commit()
 }
 
 async function processCSVFile(input_path, context) {
@@ -415,10 +413,11 @@ async function processCSVFile(input_path, context) {
                 throw err
             }
             await trx.commit()
-
-            let counties = context.counties
-            await outputBingFiles(counties)
         }
+
+        let counties = context.counties
+        await outputBingFiles(counties)
+
         console.log('Finished processing records')
         process.exit(0)
     })
@@ -438,22 +437,43 @@ async function outputRejected(file) {
             await trx.commit()
             trx = await knex.transaction()
         }
-        const address_upper = item.address.toUpperCase()
-        const address_upper_safe = mysql_real_escape_string(address_upper)
-        await datasource.insert(trx, 'rejected', `upper(original_address) = '${address_upper_safe}'`, 'original_address', address_upper)
+        await addToRejected(trx, item.address)
     }
     await trx.commit()
     trx = await knex.transaction()
 }
 
+async function outputBadPostcodes() {
+    let trx = await knex.transaction()
+    let properties = await trx('properties').whereRaw('CHAR_LENGTH(postcode) < 4')
+    if (properties == null) return
+    for (let i = 0; i < properties.length; ++i) {
+        if (i > 0 && i % 101 == 0) {
+            await trx.commit()
+            trx = await knex.transaction()
+        }
+        const bad_property = properties[i]
+        await moveAddressToRejected(trx, bad_property.original_address)
+    }
+    await trx.commit()
+}
+
+async function addToRejected(trx, existing_address) {
+    const address_upper = existing_address.toUpperCase()
+    const address_upper_safe = mysql_real_escape_string(existing_address)
+    console.log(`Rejecting property ${address_upper}`)
+    await datasource.insert(trx, 'rejected', `upper(original_address) = '${address_upper_safe}'`, 'original_address', address_upper)  
+}
+
+async function moveAddressToRejected(trx, existing_address) {
+    // Remove so it's not re-processed
+    await trx('properties').where('original_address', existing_address).del()
+    await addToRejected(trx, existing_address)
+}
+
 async function updateAddressForBingResult(trx, existing_address, bing_result) {
     if (!bing_result || !bing_result.place_id) { 
-        // Remove so it's not re-processed
-        await trx('properties').where('original_address', existing_address).del()
-        const address_upper = existing_address.toUpperCase()
-        const address_upper_safe = mysql_real_escape_string(existing_address)
-        console.log(`Rejecting property ${address_upper}`)
-        await datasource.insert(trx, 'rejected', `upper(original_address) = '${address_upper_safe}'`, 'original_address', address_upper)
+        await moveAddressToRejected(trx, existing_address)
         return 
     }
     console.log(`Updating property with original address ${existing_address} to ${bing_result.address}`) 
@@ -461,6 +481,7 @@ async function updateAddressForBingResult(trx, existing_address, bing_result) {
                             .whereNull('address') // NOTE: this means it will only update once
                             .update({address: bing_result.address,
                                 place_id: bing_result.place_id,
+                                postcode: bing_result.postcode,
                                 lat: bing_result.lat,
                                 lon: bing_result.lon,
                                 updated: moment().utc().format('hh:mm:ss')
@@ -542,6 +563,13 @@ switch (mode) {
     case 'process_rejected': {
         if (args.length >= 4) {
             outputRejected(args[3])
+            valid = true
+            break
+        }
+    }
+    case 'process_bad_postcodes': {
+        if (args.length >= 3) {
+            outputBadPostcodes()
             valid = true
             break
         }

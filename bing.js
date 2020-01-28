@@ -191,6 +191,7 @@ function parseGeocodeSuccessResultData(response, onAddressDeterminedCallback) {
                     addressResult.lat = lat
                     addressResult.lon = lon
                     addressResult.place_id = entity.attributes.Id
+                    addressResult.postcode = addressComponents.attributes.PostalCode
 
                     onAddressDeterminedCallback(address, addressResult, null)
                 }

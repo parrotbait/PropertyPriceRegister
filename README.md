@@ -28,12 +28,13 @@ TODO: Fetch the PPR data
 There are two parts to the property price checks.
 
 1. Parse. This step takes the CSV from the property price register, parses it, eliminates junk addresses (as well as we can) and then outputs the addresses in a json format
+
+        node index.js parse PPR-ALL.csv
+        
 2. Find. This step takes the output parsed JSON files and uses a third party geocoding service to perform further validation on the address. 
 3. When these phases are complete then we have the addresses ready to be used on a map.
 
-        npm run go find bing <csv_json_path> <output_record_success_json_path> <output_record_failure_json_path>
-
-        npm run go parse <input_csv_path> <output_record_success_json_path> <output_record_failure_json_path>
+        node index.js find bing
 
 #### Debugging
 
