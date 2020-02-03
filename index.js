@@ -235,33 +235,6 @@ function fixAddress(address) {
     return sentence
 }
 
-function mysql_real_escape_string (str) {
-    return str.replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, function (char) {
-        switch (char) {
-            case "\0":
-                return "\\0";
-            case "\x08":
-                return "\\b";
-            case "\x09":
-                return "\\t";
-            case "\x1a":
-                return "\\z";
-            case "\n":
-                return "\\n";
-            case "\r":
-                return "\\r";
-            case "\"":
-            case "'":
-            case "\\":
-            case "%":
-                return "\\"+char; // prepends a backslash to backslash, percent,
-                                  // and double/single quotes
-            default:
-                return char;
-        }
-    });
-}
-
 async function processCSVRowInternal(trx, row, context) {
     const original_address = row.address
     if (!original_address) return false
@@ -371,14 +344,14 @@ async function processCSVFile(input_path, context) {
         // ]
         let trx = null
         
-        for (let i = 1; i < results.length; i += 1) {
+        for (let i = 1; i < results.length; i) {
             let row = results[i]
             if (i % 10000 === 0) {
                 console.log(`Processed ${i}/${results.length} records`)
             }
             const address = row.address
             //console.log(`Processing ${address}`)
-            const date = moment(row.date, 'DD/MM/YYYY', true)
+            let date = moment(row.date, 'DD/MM/YYYY', true)
             if (date.isBefore(last_processed_date, 'day')) {
                 //console.log(`Date ${date} already processed, skipping`)
                 continue
