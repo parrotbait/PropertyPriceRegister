@@ -18,21 +18,21 @@ const NO_ERROR = 0
 const UNKNOWN_ERROR = 1
 const QUOTA_ERROR = 2
 
-async function startGeocodeJob(xml_file, config) {
+async function startGeocodeJob(xmlFile) {
   const url =
     'https://spatial.virtualearth.net/REST/v1/dataflows/geocode?input=xml&key=' +
     bingApiKey
     console.log('Bing url (Geocode Job Create) ' + url)
     return new Promise((resolve, reject) => { 
         request.post({url:url, 
-            body:utils.loadXmlFromDisk(xml_file),
+            body:utils.loadXmlFromDisk(xmlFile),
             headers: {'Content-Type': 'text/xml'}}, (error, response, body) => { // eslint-disable-line no-unused-vars
             if (error) return reject(error)
             if (response === undefined) {
                 return reject('null')
             } 
-            if (response.statusCode != 200 && response.statusCode != 201) {
-                if (response.statusCode == 503) {
+            if (response.statusCode !== 200 && response.statusCode !== 201) {
+                if (response.statusCode === 503) {
                     console.log('Invalid status code <' + response.statusCode + '>' + ' body ' + JSON.stringify(response.body))
                     return reject(quotaError)
                 } else {
@@ -42,7 +42,7 @@ async function startGeocodeJob(xml_file, config) {
 
             let json = JSON.parse(body)
             let resource = getResourceData(json, reject)
-            if (resource == null) return
+            if (!resource) return
             let links = getResourceLinkData(resource, reject)
             let linkData = links[0]
             if (!validateProperty(linkData, 'url', reject)) return
@@ -63,19 +63,19 @@ function validateProperty(json, prop, reject) {
 function getResourceData(json, reject) {
     if (!validateProperty(json, 'resourceSets', reject)) return
     let resourceSets = json['resourceSets']
-    if (resourceSets.length == 0) {
+    if (resourceSets.length === 0) {
         reject('Expected at least 1 resourceSet')
         return null
     }
     let firstRS = resourceSets[0]
     if (!validateProperty(firstRS, 'estimatedTotal', reject)) return
-    if (firstRS['estimatedTotal'] == 0) {
+    if (firstRS['estimatedTotal'] === 0) {
         reject('Expected at least 1 resource created')
         return null
     }
     if (!validateProperty(firstRS, 'resources', reject)) return
     let resourcesList = firstRS['resources']
-    if (resourcesList.length == 0) {
+    if (resourcesList.length === 0) {
         reject('Expected at least 1 resource to process')
         return null
     }
@@ -86,22 +86,22 @@ function getResourceData(json, reject) {
 function getResourceLinkData(resource, reject) {
     if (!validateProperty(resource, 'links', reject)) return
     let links = resource['links']
-    if (links.length == 0) {
+    if (links.length === 0) {
         reject('Expected at least 1 link')
         return null
     }
     return links
 }
 
-function parseGeocodeJobStatusResult(response, config) {
+function parseGeocodeJobStatusResult(response) {
     return new Promise((resolve, reject) => { 
         let json = JSON.parse(response)
         let resource = getResourceData(json, reject)
-        if (resource == null) return reject('Expect valid resource')
+        if (!resource) return reject('Expect valid resource')
         if (!validateProperty(resource, 'status')) return reject('Expect "status" field in resource')
         if (resource['status'].toLowerCase() === 'pending') return reject(601) // Like a custom http code :)
         let links = getResourceLinkData(resource, reject)
-        if (links == null) return reject('Expected links to be present')
+        if (!links) return reject('Expected links to be present')
         if (links.length < 2) return reject('Expected at least 2 links, self and output')
 
         if (!validateProperty(resource, 'failedEntityCount')) return reject('Expected failed entity count')
@@ -110,7 +110,7 @@ function parseGeocodeJobStatusResult(response, config) {
         let processedCount = resource.processedEntityCount
 
         let finalLinks = ['', '']
-        for (let i = 0; i < links.length; ++i) {
+        for (let i = 0; i < links.length; i += 1) {
             let linkData = links[i]
             if (!validateProperty(linkData, 'role')) return
             if (!validateProperty(linkData, 'url')) return
@@ -260,10 +260,10 @@ function fetchGeocodeJobStatus(url) {
     })
 }
 
-async function processGeocodeJobRequest(url, retryCount, config, onAddressDeterminedCallback) {
+async function processGeocodeJobRequest(url, retryCount, onAddressDeterminedCallback) {
     // Step 2: Check geocode job status
     // This can fail if bing hasn't yet processed the batch
-    console.log('Fetch Job Status: ' + url)
+    console.log(`Fetch Job Status: ${url}`)
     const jobStatusResult = await fetchGeocodeJobStatus(url)
     if (!jobStatusResult) {
         return UNKNOWN_ERROR
@@ -271,8 +271,8 @@ async function processGeocodeJobRequest(url, retryCount, config, onAddressDeterm
 
     let retry = false
     // Index 0 is success, index 1 if failure
-    let resultUrls = await parseGeocodeJobStatusResult(jobStatusResult, config).catch((err) => {
-        if (err == 601) {
+    let resultUrls = await parseGeocodeJobStatusResult(jobStatusResult).catch((err) => {
+        if (err === 601) {
             console.log('Failed to fetch bing data, retry required')
             retry = true
         } else {
@@ -284,7 +284,7 @@ async function processGeocodeJobRequest(url, retryCount, config, onAddressDeterm
     // If we failed we need to retry again 'later'
     if (retry) {
         console.log('Retrying bing fetch')
-        retryCount++
+        retryCount += 1
         if (retryCount > 5) {
             console.log('Exceeded retry count! Bailing out')
             process.exit()
@@ -294,7 +294,7 @@ async function processGeocodeJobRequest(url, retryCount, config, onAddressDeterm
             console.log(err)
             return UNKNOWN_ERROR
         })
-        return await processGeocodeJobRequest(url, retryCount, config, onAddressDeterminedCallback)
+        return await processGeocodeJobRequest(url, retryCount, onAddressDeterminedCallback)
     }
 
     console.log('Fetch Job Output urls: ' + JSON.stringify(resultUrls, null, 4))
@@ -307,7 +307,7 @@ async function processGeocodeJobRequest(url, retryCount, config, onAddressDeterm
             error = UNKNOWN_ERROR
         })
         if (!geocodedResultsSuccess) error = UNKNOWN_ERROR
-        if (error != NO_ERROR) return error
+        if (error !== NO_ERROR) return error
 
         let wasSuccessful = await parseGeocodeSuccessResultData(geocodedResultsSuccess, onAddressDeterminedCallback).catch((err) => {
             console.log(err)
@@ -315,7 +315,7 @@ async function processGeocodeJobRequest(url, retryCount, config, onAddressDeterm
         })
 
         if (!wasSuccessful) return error = UNKNOWN_ERROR
-        if (error != NO_ERROR) return error
+        if (error !== NO_ERROR) return error
     }
 
     if (resultUrls.length > 1 && resultUrls[1].length) {   
@@ -328,7 +328,7 @@ async function processGeocodeJobRequest(url, retryCount, config, onAddressDeterm
         })
 
         if (!geocodedResultsFailure) return error = UNKNOWN_ERROR
-        if (error != NO_ERROR) return error
+        if (error !== NO_ERROR) return error
 
         let failedProcessed = await parseGeocodeFailedResultData(geocodedResultsFailure, onAddressDeterminedCallback).catch((err) => {
             console.log(err)
@@ -336,37 +336,37 @@ async function processGeocodeJobRequest(url, retryCount, config, onAddressDeterm
         })
 
         if (!failedProcessed) return error = UNKNOWN_ERROR
-        if (error != NO_ERROR) return error
+        if (error !== NO_ERROR) return error
     }
  
     return NO_ERROR
 }
 
-async function batchGeocodeProcessXml(xml_file, config, onAddressDeterminedCallback) {
+async function batchGeocodeProcessXml(xmlFile, onAddressDeterminedCallback) {
     // Step 1: Kick off the job with bing
     // We receive back a url that contains the resources requested
     let error = NO_ERROR
-    let url = await startGeocodeJob(xml_file, config).catch((err) => {
+    let url = await startGeocodeJob(xmlFile).catch((err) => {
         if (err === quotaError) {
-            console.log('Error - hit user quota limits for key: ' + bingApiKey)
+            console.log(`Error - hit user quota limits for key: ${bingApiKey}`)
             error = QUOTA_ERROR
         } else {
             console.log(err)
             error = UNKNOWN_ERROR
         }
     })
-    if (error != NO_ERROR) return error
+    if (error !== NO_ERROR) return error
 
     // Wait before trying to fetch the actual bing data (it is asynchronous)
     await utils.timeoutPromise(20000)
-    return await processGeocodeJobRequest(url, 0, config, onAddressDeterminedCallback)
+    return await processGeocodeJobRequest(url, 0, onAddressDeterminedCallback)
 }
 
 module.exports = {
-    processData: async function(config, onAddressDeterminedCallback) {
-        bingDataDirectory = utils.getConfigKey('bing_data_directory', config)
-        const bingApiKeys = utils.getConfigKey('bing_api', config)
-        if (bingApiKeys.length == 0) {
+    processData: async function(onAddressDeterminedCallback) {
+        bingDataDirectory = process.env.BING_DIRECTORY
+        const bingApiKeys = process.env.BING_API_KEYS.split(',')
+        if (bingApiKeys.length === 0) {
             console.log('Missing bing api keys')
             process.exit()
         }
@@ -379,23 +379,23 @@ module.exports = {
             process.exit()
         }
         const files = fs.readdirSync(xml_path)
-        for (let i = 0; i < files.length; ++i) {
+        for (let i = 0; i < files.length; i += 1) {
             const file = files[i]
             // We only care about xml files for bing
-            if (utils.getFileExtension(file) !== 'xml') continue
+            if (utils.getFileExtension(file) !=== 'xml') continue
             const filePath = path.join(xml_path, file)
             console.log('Processing Bing xml file: ' + file)
             let res = QUOTA_ERROR
-            while (res == QUOTA_ERROR) {
-                res = await batchGeocodeProcessXml(filePath, config, onAddressDeterminedCallback)
+            while (res === QUOTA_ERROR) {
+                res = await batchGeocodeProcessXml(filePath, onAddressDeterminedCallback)
 
-                if (res == QUOTA_ERROR) {
+                if (res === QUOTA_ERROR) {
                     bingApiIndex++
                     if (bingApiIndex < bingApiKeys.length) {
                         bingApiKey = bingApiKeys[bingApiIndex]
                     } else {
                         console.log('All bing API keys used')
-                        await email.sendEmail(config, i, 'All keys used')
+                        await email.sendEmail(i, 'All keys used')
                         break
                     }
                 }
@@ -403,15 +403,15 @@ module.exports = {
             
             if (res != NO_ERROR) {
                 console.log(`Failed to get bing data for key ${bingApiKey}`)
-                await email.sendEmail(config, i, `Some error for key ${bingApiKey}`)
+                await email.sendEmail(i, `Some error for key ${bingApiKey}`)
                 process.exit()
             } 
             // Remove the xml file
             rimraf.sync(filePath)
         }
     },
-    outputXmlRequestsFiles: function(properties, counties, config) {
-        bingDataDirectory = utils.getConfigKey('bing_data_directory', config)
+    outputXmlRequestsFiles: function(properties, counties) {
+        bingDataDirectory = process.env.BING_DIRECTORY
         let xml = builder.create('GeocodeFeed').att('xmlns', 'http://schemas.microsoft.com/search/local/2010/5/geocode').att('Version', '2.0')  
         let num_iterations = 0
         let count = 0
@@ -422,7 +422,7 @@ module.exports = {
             rimraf.sync(bingPath)
         }
         fs.mkdirSync(bingPath)
-        for (let i = 0; i < properties.length; ++i) {
+        for (let i = 0; i < properties.length; i += 1) {
             const property = properties[i]
             // Ignore properties that already have decoded places
             if (property.place_id) continue

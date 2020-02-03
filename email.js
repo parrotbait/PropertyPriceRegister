@@ -2,7 +2,7 @@
 const nodemailer = require('nodemailer')
 const utils = require('./utils')
 
-async function sendEmailInternal(config, processed, log) {
+async function sendEmailInternal(processed, log) {
     const emailFrom = process.env.EMAIL_FROM
     const emailTo = process.env.EMAIL_TO
     const fromPw = process.env.EMAIL_PASSWORD
@@ -35,8 +35,8 @@ async function sendEmailInternal(config, processed, log) {
 }
 
 module.exports = {
-    sendEmail: async function(config, processed, log) {
-        await sendEmailInternal(config, processed, log).catch((err) => {
+    sendEmail: async function(processed, log) {
+        await sendEmailInternal(processed, log).catch((err) => {
             console.log(err)
             process.exit()
         })

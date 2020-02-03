@@ -17,12 +17,6 @@ process.on('unhandledRejection', err => {
     process.exit(1)
 })
   
-const config = utils.loadJsonFromDisk(path.join(__dirname, 'config.json'))
-if (!config) {
-    console.log('Missing \'config.json\' file, see config_template.json as an example.')
-    process.exit()
-}
-
 async function fetchCounties(context) {
     const { knex } = context
     let counties = await knex.transaction(trx => {
@@ -225,7 +219,7 @@ function fixAddress(address) {
 
     let sentence = ''
     // Reconstruct the sentence in the form of: 1 Main St,Carlow Town,Carlow
-    for (let i = 0; i < addressComponents.length; ++i) {
+    for (let i = 0; i < addressComponents.length; i += 1) {
         let component = addressComponents[i].trim()
         // Returns lettters with first letter capitalized
         const result = component.toLowerCase().replace(/\b[a-z](?=[a-z]{2})/g, function(letter) {
@@ -312,7 +306,7 @@ async function syncPropertySales(trx, address, row, property, current_sale) {
     }
 
     const last_sales_list = last_sales_rs.shift()
-    for (let i = 0; i < last_sales_list.length; ++i) {
+    for (let i = 0; i < last_sales_list.length; i += 1) {
         let last_sale = last_sales_list[i]
         const last_sale_date = moment(last_sale.date, 'DD/MM/YYYY', true)
         const diff_days = moment.duration(last_sale_date.diff(current_sale_date)).asDays()
@@ -339,7 +333,7 @@ async function outputBingFiles(counties) {
     const trx = await knex.transaction()
     try {
         const properties = await trx('properties').select('*').whereNull('place_id')
-        bing.outputXmlRequestsFiles(properties, counties, config)
+        bing.outputXmlRequestsFiles(properties, counties)
     } catch (err) {
         console.log(err)
     }
@@ -353,8 +347,6 @@ async function processCSVFile(input_path, context) {
     await fetchCounties(context)
     
     let cursorPosition = 0
-    //let properties = utils.loadJsonFromDisk(processed_path) || {}
-    //let rejectedProperties = utils.loadJsonFromDisk(rejected_path) || {}
     let last_sale = await knex.transaction(trx => {
         return context.knex('sales').select('date').limit(1).orderBy('date', 'desc')
         .transacting(trx)
@@ -379,14 +371,14 @@ async function processCSVFile(input_path, context) {
         // ]
         let trx = null
         
-        for (let i = 1; i < results.length; ++i) {
+        for (let i = 1; i < results.length; i += 1) {
             let row = results[i]
             if (i % 10000 === 0) {
                 console.log(`Processed ${i}/${results.length} records`)
             }
             const address = row.address
             //console.log(`Processing ${address}`)
-            let date = moment(row.date, 'DD/MM/YYYY', true)
+            const date = moment(row.date, 'DD/MM/YYYY', true)
             if (date.isBefore(last_processed_date, 'day')) {
                 //console.log(`Date ${date} already processed, skipping`)
                 continue
@@ -409,41 +401,6 @@ async function processCSVFile(input_path, context) {
         console.log('Finished processing records')
         process.exit(0)
     })
-}
-
-async function outputRejected(file) {
-    let final_path = path.join(__dirname, file)
-    const rejected_items = utils.loadJsonFromDisk(final_path)
-    if (!rejected_items) { return }
-    let trx = await knex.transaction()
-    for (let i = 0; i < rejected_items.length; ++i) {
-        const item = rejected_items[i]
-        if (i % 100 == 0) {
-            console.log(`Processing ${i}/${rejected_items.length}`)
-        }
-        if (i % 3001 == 0) {
-            await trx.commit()
-            trx = await knex.transaction()
-        }
-        await addToRejected(trx, item.address)
-    }
-    await trx.commit()
-    trx = await knex.transaction()
-}
-
-async function outputBadPostcodes() {
-    let trx = await knex.transaction()
-    let properties = await trx('properties').whereRaw('CHAR_LENGTH(postcode) < 4')
-    if (properties == null) return
-    for (let i = 0; i < properties.length; ++i) {
-        if (i > 0 && i % 101 == 0) {
-            await trx.commit()
-            trx = await knex.transaction()
-        }
-        const bad_property = properties[i]
-        await moveAddressToRejected(trx, bad_property.original_address)
-    }
-    await trx.commit()
 }
 
 async function addToRejected(trx, existing_address) {
@@ -506,7 +463,7 @@ async function processPendingPPRRecords(source, mode) {
     }
     // Bing is special, it processes xml files already created on disk
     if (source === 'bing') {
-        await bing.processData(config, onAddressDetermined)    
+        await bing.processData(onAddressDetermined)    
         return
     }
 }
@@ -545,20 +502,6 @@ switch (mode) {
             valid = true
         }
         break
-    }
-    case 'process_rejected': {
-        if (args.length >= 4) {
-            outputRejected(args[3])
-            valid = true
-            break
-        }
-    }
-    case 'process_bad_postcodes': {
-        if (args.length >= 3) {
-            outputBadPostcodes()
-            valid = true
-            break
-        }
     }
     case 'parse': {
         if (args.length >= 4) {
