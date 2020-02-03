@@ -19,23 +19,24 @@ const UNKNOWN_ERROR = 1
 const QUOTA_ERROR = 2
 
 async function startGeocodeJob(xml_file, config) {
-    const url = 'https://spatial.virtualearth.net/REST/v1/dataflows/geocode?input=xml&key=' + bingApiKey
+  const url =
+    'https://spatial.virtualearth.net/REST/v1/dataflows/geocode?input=xml&key=' +
+    bingApiKey
     console.log('Bing url (Geocode Job Create) ' + url)
     return new Promise((resolve, reject) => { 
         request.post({url:url, 
             body:utils.loadXmlFromDisk(xml_file),
             headers: {'Content-Type': 'text/xml'}}, (error, response, body) => { // eslint-disable-line no-unused-vars
-            if (error) reject(error)
+            if (error) return reject(error)
             if (response === undefined) {
-                reject('null')
-                return
+                return reject('null')
             } 
             if (response.statusCode != 200 && response.statusCode != 201) {
                 if (response.statusCode == 503) {
                     console.log('Invalid status code <' + response.statusCode + '>' + ' body ' + JSON.stringify(response.body))
                     return reject(quotaError)
                 } else {
-                    reject('Invalid status code <' + response.statusCode + '>' + ' body ' + JSON.stringify(response.body))
+                    return reject('Invalid status code <' + response.statusCode + '>' + ' body ' + JSON.stringify(response.body))
                 }                
             }
 
@@ -108,7 +109,7 @@ function parseGeocodeJobStatusResult(response, config) {
         let failedEntityCount = resource.failedEntityCount
         let processedCount = resource.processedEntityCount
 
-        var finalLinks = ['', '']
+        let finalLinks = ['', '']
         for (let i = 0; i < links.length; ++i) {
             let linkData = links[i]
             if (!validateProperty(linkData, 'role')) return
@@ -135,7 +136,7 @@ function parseGeocodeJobStatusResult(response, config) {
 
 function parseGeocodeSuccessResultData(response, onAddressDeterminedCallback) {
     return new Promise((resolve, reject) => { 
-        var options = {ignoreComment: true, alwaysChildren: true}
+        let options = {ignoreComment: true, alwaysChildren: true}
         let root = xmlConverter.xml2js(response, options)
         
         if (typeof(root) !== 'object' || !root.elements) {
@@ -153,10 +154,16 @@ function parseGeocodeSuccessResultData(response, onAddressDeterminedCallback) {
         if (!Array.isArray(entities) || entities.length == 0) {
             return reject('Missing or invalid size entities array')
         }
+        
         for (let i = 0; i < entities.length; i++) {
+            console.log(`Processing bing entity ${i}/${entities.length}`)
             let entity = entities[i]
             let address = utils.decodeBase64(entity.attributes.Id)
             let elements = entity.elements
+            if (elements.length == 0) {
+                onAddressDeterminedCallback(address, null, null)
+                continue
+            }
             for (let j = 0; j < elements.length; ++j) {
                 let elem = elements[j]
                 if (elem.name === 'GeocodeResponse') {
@@ -169,7 +176,7 @@ function parseGeocodeSuccessResultData(response, onAddressDeterminedCallback) {
                     if (attributes.EntityType && 
                         attributes.EntityType.toLowerCase() !== 'address') {
                         onAddressDeterminedCallback(address, null, null)
-                        return resolve(true)
+                        continue
                     }
                     console.log('Confidence ' + elem.attributes.Confidence)
                     // <Address AddressLine="14 Beaufield Grove" AdminDistrict="County Kildare" CountryRegion="Ireland" 
@@ -194,8 +201,11 @@ function parseGeocodeSuccessResultData(response, onAddressDeterminedCallback) {
                     addressResult.postcode = addressComponents.attributes.PostalCode
 
                     onAddressDeterminedCallback(address, addressResult, null)
+                    continue
                 }
             }
+            console.log(`onAddressDeterminedCallback ${address}`)
+            onAddressDeterminedCallback(address, null, null)
         }
         return resolve(true)
     })
@@ -203,30 +213,40 @@ function parseGeocodeSuccessResultData(response, onAddressDeterminedCallback) {
 
 function parseGeocodeFailedResultData(response, onAddressDeterminedCallback) {
     return new Promise((resolve, reject) => { 
-        var options = {ignoreComment: true, alwaysChildren: true}
+        let options = {ignoreComment: true, alwaysChildren: true}
         let root = xmlConverter.xml2js(response, options)
         if (typeof(root) === 'object' && root.elements) {
             let feed = root.elements
             if (Array.isArray(feed) && feed.length > 0) {
-                let feedRoot = feed[0]
-                if (feedRoot.hasOwnProperty('elements')) {
-                    let entities = feed[0].elements
-                    if (Array.isArray(entities) && entities.length) {
-                        for (let i = 0; i < entities.length; i++) {
-                            let entity = entities[i]
-                            let address = utils.decodeBase64(entity.attributes.Id)
-                            onAddressDeterminedCallback(address, null, {})
+                for (let outer = 0;  outer < feed.length; ++outer) {
+                    let feedRoot = feed[outer]
+                    if (!feedRoot.hasOwnProperty('name') || feedRoot.name !== 'GeocodeEntity') {
+                        console.log('Missing name property')
+                        continue
+                    }
+                    if (feedRoot.hasOwnProperty('elements')) {
+                        let entities = feed[0].elements
+                        if (Array.isArray(entities) && entities.length) {
+                            for (let i = 0; i < entities.length; i++) {
+                                let entity = entities[i]
+                                let address = utils.decodeBase64(entity.attributes.Id)
+                                onAddressDeterminedCallback(address, null, {})
+                            }
+                        } else {
+                            console.log('Missing or invalid size entities array')
+                            return reject('Missing or invalid size entities array')
                         }
                     } else {
-                        return reject('Missing or invalid size entities array')
-                    }
-                } else {
-                    return reject('Missing \'elements\' key')
-                }                
+                        console.log('Missing elements key')
+                        return reject('Missing \'elements\' key')
+                    } 
+                }               
             } else {
+                console.log('Missing or invalid size feed array')
                 return reject('Missing or invalid size feed array')
             }
         } else {
+            console.log('Missing or invalid root object element')
             return reject('Missing or invalid root object element')
         }
         return resolve(true)
@@ -249,7 +269,7 @@ async function processGeocodeJobRequest(url, retryCount, config, onAddressDeterm
         return UNKNOWN_ERROR
     }
 
-    var retry = false
+    let retry = false
     // Index 0 is success, index 1 if failure
     let resultUrls = await parseGeocodeJobStatusResult(jobStatusResult, config).catch((err) => {
         if (err == 601) {
@@ -274,7 +294,7 @@ async function processGeocodeJobRequest(url, retryCount, config, onAddressDeterm
             console.log(err)
             return UNKNOWN_ERROR
         })
-        return processGeocodeJobRequest(url, retryCount, config, onAddressDeterminedCallback)
+        return await processGeocodeJobRequest(url, retryCount, config, onAddressDeterminedCallback)
     }
 
     console.log('Fetch Job Output urls: ' + JSON.stringify(resultUrls, null, 4))
@@ -339,7 +359,7 @@ async function batchGeocodeProcessXml(xml_file, config, onAddressDeterminedCallb
 
     // Wait before trying to fetch the actual bing data (it is asynchronous)
     await utils.timeoutPromise(20000)
-    return processGeocodeJobRequest(url, 0, config, onAddressDeterminedCallback)
+    return await processGeocodeJobRequest(url, 0, config, onAddressDeterminedCallback)
 }
 
 module.exports = {
@@ -382,8 +402,8 @@ module.exports = {
             }
             
             if (res != NO_ERROR) {
-                console.log('Failed to get bing data')
-                await email.sendEmail(config, i, 'Some error')
+                console.log(`Failed to get bing data for key ${bingApiKey}`)
+                await email.sendEmail(config, i, `Some error for key ${bingApiKey}`)
                 process.exit()
             } 
             // Remove the xml file
@@ -414,7 +434,7 @@ module.exports = {
 
             if (!county) continue
             const stringHash = utils.encodeBase64(property.original_address)
-            var node = xml.ele('GeocodeEntity', {Id: stringHash, xmlns: 'http://schemas.microsoft.com/search/local/2010/5/geocode'})
+            let node = xml.ele('GeocodeEntity', {Id: stringHash, xmlns: 'http://schemas.microsoft.com/search/local/2010/5/geocode'})
             node.ele('GeocodeRequest', {
                 Culture: 'en-IE', 
                 IncludeNeighborhood: '0', 
@@ -427,7 +447,7 @@ module.exports = {
                 let filename = ('' + num_iterations).padStart(5, '0') + '.xml'
                 console.log('Outputting ' + records_per_file + ' to ' + filename + ' ...')
                 ++num_iterations
-                var xmlText = xml.end({ pretty: true })
+                let xmlText = xml.end({ pretty: true })
                 const xmlPath = path.join(bingPath, filename)
                 fs.writeFileSync(xmlPath, xmlText)
                 count = 0    

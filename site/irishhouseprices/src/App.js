@@ -31,7 +31,7 @@ class App extends Component {
       minPrice: null,
       maxPrice: null,
       startDate: '2017-07-01',
-      endDate: '2018-05-01'
+      endDate: "2018-05-01"
     },
     counties: [],
     properties: []
@@ -186,7 +186,7 @@ class App extends Component {
               <p>
                 A couple of years ago when buying a house I encountered the Property Price Register for the first time.
                 The <a target="_blank" rel="noopener noreferrer" href="https://www.propertypriceregister.ie/website/npsra/pprweb.nsf/PPR?OpenForm">existing government site</a> leaves a lot to be desired.
-                Search is clunky and doesn't work well, map is ideally suited to viewing this data.
+                The search is clunky and doesn't work well, maps are more suited to viewing this data.
               </p>
               <p>
                   So as a pet project I decided to first take the PPR data, clean it a little, find accurate positions (where possible) and map out the properties.

@@ -1,17 +1,18 @@
-
+const path = require('path')
+require('dotenv').config({ path: path.join(__dirname, '.env') })
 const assert = require('assert')
 const csv = require('csv-parser')
-var path = require('path')
 const fs = require('fs')
+const moment = require('moment')
 const utils = require('./utils')
 const bing = require('./bing')
 const constants = require('./constants')
 const datasource = require('./datasources/datasource')
-var moment = require('moment')
+const knex = require('./knex/knex.js')
 
 const outputIgnoredProperties = false
 
-process.on('unhandledRejection', (err) => { 
+process.on('unhandledRejection', err => {
     console.error(err)
     process.exit(1)
 })
@@ -20,21 +21,6 @@ const config = utils.loadJsonFromDisk(path.join(__dirname, 'config.json'))
 if (!config) {
     console.log('Missing \'config.json\' file, see config_template.json as an example.')
     process.exit()
-}
-
-const options = {
-    client: 'mysql',
-    connection: {
-        host: 'localhost',
-        user: config.db_user,
-        password: config.db_pass,
-        database: config.db_name
-    },
-    debug: false,
-    pool: {
-        min: 1,
-        max: 10
-    },
 }
 
 async function fetchCounties(context) {
@@ -47,13 +33,12 @@ async function fetchCounties(context) {
     })
 
     context.counties = {}
-    for (let i = 0; i < counties.length; ++i) {
+    for (let i = 0; i < counties.length; i+=1) {
         context.counties[counties[i].name.toLowerCase()] = counties[i].id
     }
 
 }
 
-const knex = require('knex')(options)
 const context = { knex }
 
 function fixPrice(price) {
@@ -290,15 +275,15 @@ async function processCSVRowInternal(trx, row, context) {
 
     const address = fixAddress(original_address)
     if (!address) {       
-        console.log('Ignoring property with invalid address: ' + JSON.stringify(original_address))
-
+        console.log(`Ignoring property at row ${row} with invalid address: \'${original_address}\``)
         await addToRejected(trx, original_address)
+        return false
     }
     
     const existing_rejected = await trx('rejected').select('*')
                                 .where('original_address', original_address_upper)
     if (existing_rejected && existing_rejected.shift()) {
-        console.log(`Address ${address} already rejected`)
+        console.log(`Address at row ${row} with address: ${original_address_upper} already rejected`)
         return false
     }
     
@@ -313,37 +298,40 @@ async function processCSVRowInternal(trx, row, context) {
 
 async function syncPropertySales(trx, address, row, property, current_sale) {
 
-    const current_sale_date = moment(row.date, 'DD/MM/YYYY', true)
-    const sql_date = current_sale_date.format('YYYY/MM/DD')
-    let last_sale_rs = await trx('sales').select('*').where({ 'property_id': property.id }).limit(1).orderBy('date', 'desc')
-    const last_sale = last_sale_rs.shift()
-    if (!last_sale) {
-        return await trx('sales').insert({ property_id: property.id, price: current_sale.price, date: sql_date })
-    }
-    
-    const last_sale_date = moment(last_sale.date, 'DD/MM/YYYY', true)
-    const diff_days = moment.duration(last_sale_date.diff(current_sale_date)).asDays()
-    if (Math.abs(diff_days) > 10) {
-        return await trx('sales').insert({ property_id: property.id, price: current_sale.price, date: sql_date })
-    }
-
-    if (current_sale.price === last_sale.price) {
-        console.debug('*** Dupe found ' + address + '***')
-        return
-    } 
-    
-    console.debug('*** Dupe found with different price \n' + JSON.stringify(row, null, 2) + ' prev record: \n' + JSON.stringify(last_sale, null, 2) + '***')
     if (current_sale.price < 20000) {
         // Ignore this property - probably some error
         return
     }  
     
-    if (last_sale.price < 20000) {
-        // Ignore the last address
+    const current_sale_date = moment(row.date, 'DD/MM/YYYY', true)
+    const sql_date = current_sale_date.format('YYYY/MM/DD')
+    let last_sales_rs = await trx('sales').select('*').where({ 'property_id': property.id }).orderBy('date', 'desc')
+
+    if (!last_sales_rs) {
         return await trx('sales').insert({ property_id: property.id, price: current_sale.price, date: sql_date })
     }
 
-    // Take the most recent
+    const last_sales_list = last_sales_rs.shift()
+    for (let i = 0; i < last_sales_list.length; ++i) {
+        let last_sale = last_sales_list[i]
+        const last_sale_date = moment(last_sale.date, 'DD/MM/YYYY', true)
+        const diff_days = moment.duration(last_sale_date.diff(current_sale_date)).asDays()
+        if (Math.abs(diff_days) > 3) {
+            return await trx('sales').insert({ property_id: property.id, price: current_sale.price, date: sql_date })
+        }
+
+        if (current_sale.price === last_sale.price) {
+            console.debug('*** Dupe found ' + address + '***')
+            return
+        } 
+        
+        console.debug('*** Dupe found with different price \n' + JSON.stringify(row, null, 2) + ' prev record: \n' + JSON.stringify(last_sale, null, 2) + '***')
+        
+        if (last_sale.price < 20000) {
+            // Remove the last sale - taking this one instead
+            await trx('sales').where('id', last_sale.id).del()
+        }
+    }
     return await trx('sales').insert({ property_id: property.id, price: current_sale.price, date: sql_date })
 }
 
@@ -473,10 +461,17 @@ async function moveAddressToRejected(trx, existing_address) {
 
 async function updateAddressForBingResult(trx, existing_address, bing_result) {
     if (!bing_result || !bing_result.place_id) { 
+        if (!bing_result) {
+            console.log("No bing result")
+        } else if (!bing_result.place_id) {
+            console.log("No bing place_id")
+        } 
+        
         await moveAddressToRejected(trx, existing_address)
         return 
     }
     console.log(`Updating property with original address ${existing_address} to ${bing_result.address}`) 
+
     await trx('properties').where('original_address', existing_address)
                             .whereNull('address') // NOTE: this means it will only update once
                             .update({address: bing_result.address,
@@ -488,41 +483,32 @@ async function updateAddressForBingResult(trx, existing_address, bing_result) {
                             })
 }
 
+async function handleAddressDetermined(address, addressResult) {
+    const trx = await knex.transaction()
+    console.log(`Address determined ${address}`)
+    try {
+        await updateAddressForBingResult(trx, address, addressResult)
+    } catch (err) {
+        console.log(err)
+        throw err
+    }
+    await trx.commit()
+}
+
 async function processPendingPPRRecords(source, mode) {
-    let onAddressDetermined = async function(address, addressResult) {
-        const trx = await knex.transaction()
+    let onAddressDetermined = function(address, addressResult) {
         try {
-            await updateAddressForBingResult(trx, address, addressResult)
+            handleAddressDetermined(address, addressResult).then((result) => {})
         } catch (err) {
             console.log(err)
             throw err
         }
-        await trx.commit()
     }
     // Bing is special, it processes xml files already created on disk
     if (source === 'bing') {
-        bing.processData(config, onAddressDetermined)    
+        await bing.processData(config, onAddressDetermined)    
         return
     }
-
-    for (let i = 0; i < pending_properties.length; i ++) {
-        let property = pending_properties[i]
-        if (property.place_id) {
-            continue
-        }
-        if (mode.indexOf('find') !== -1) {
-            let addressResult = {}
-            
-            if (!addressResult) {
-                // If nothing can be parsed then we skip to the next
-                continue
-            }
-
-            onAddressDetermined(addressResult)
-        }
-    }   
-    
-    console.log('Done outputting records to disk')
 }
 
 function logUsage() {

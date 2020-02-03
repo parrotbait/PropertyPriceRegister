@@ -3,9 +3,9 @@ const nodemailer = require('nodemailer')
 const utils = require('./utils')
 
 async function sendEmailInternal(config, processed, log) {
-    const emailFrom = utils.getConfigKey('email_from', config)
-    const emailTo = utils.getConfigKey('email_to', config)
-    const fromPw = utils.getConfigKey('email_password', config)
+    const emailFrom = process.env.EMAIL_FROM
+    const emailTo = process.env.EMAIL_TO
+    const fromPw = process.env.EMAIL_PASSWORD
     let transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -23,7 +23,6 @@ async function sendEmailInternal(config, processed, log) {
 
     return new Promise((resolve, reject) => { 
         transporter.sendMail(mailOptions, function(error, info){
-            console.log('5')
             if (error) {
               console.log(error)
               reject(error)
