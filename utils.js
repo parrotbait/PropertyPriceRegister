@@ -35,7 +35,7 @@ module.exports = {
   },
   mysql_real_escape_string(str) {
     // eslint-disable-next-line no-control-regex
-    return str.replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, function(char) {
+    return str.replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, char => {
       switch (char) {
         case '\0':
           return `\0`

@@ -1,46 +1,29 @@
 module.exports = {
-    
-    insert: async function(trx, table, query, primary_key, primary_value, data) {
-        const insert_data = {}
-        insert_data[primary_key] = primary_value
-        let rs = null
-        if (query) {
-            rs = await trx(table).select('*').whereRaw(query)
-        } else {
-            rs = await trx(table).select('*').where(insert_data)
-        }
-
-        let property = rs && rs.shift()
-        if (property) {
-            return property
-        }
-
-        let final_data = { ...insert_data, ...data }
-        await trx(table).insert(final_data)
-        
-        let new_rs = await trx(table).select('*').where(insert_data)
-        return new_rs.shift()
-    }
-}
-
-class Datasource {
-    constructor(knex, table) {
-        this.knex = knex
-        this.tablename = table
+  async insert(trx, table, query, primaryKey, primaryValue, data) {
+    const insertData = {}
+    insertData[primaryKey] = primaryValue
+    let rs = null
+    if (query) {
+      rs = await trx(table)
+        .select('*')
+        .whereRaw(query)
+    } else {
+      rs = await trx(table)
+        .select('*')
+        .where(insertData)
     }
 
-    create(values) {
-        return this.knex.transaction(trx => {
-            return this.createWithTable(this.tablename, values, trx)
-            .then(trx.commit)
-            .catch(trx.commit)
-        })
+    const property = rs && rs.shift()
+    if (property) {
+      return property
     }
 
-    createWithTable(tablename, values, trx) {
-        return this.knex(tablename)
-        .transacting(trx)
-        .returning('*')
-        .insert(values)
-    }
+    const finalData = { ...insertData, ...data }
+    await trx(table).insert(finalData)
+
+    const newRs = await trx(table)
+      .select('*')
+      .where(insertData)
+    return newRs.shift()
+  }
 }

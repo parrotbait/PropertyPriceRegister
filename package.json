@@ -30,6 +30,8 @@
     "nodemailer": "^6.4.2",
     "node-js-marker-clusterer": "^1.0.0",
     "react-bootstrap": "^1.0.0-beta.10",
+    "request": "latest",
+    "request-promise": "latest",
     "xml-js": "^1.6.9"
   },
   "author": "",
@@ -42,8 +44,6 @@
     "eslint-plugin-standard": "^4.0.0",
     "export-to-csv": "latest",
     "prettier": "^1.19.1",
-    "request": "latest",
-    "request-promise": "latest",
     "rimraf": "latest",
     "winston": "latest",
     "xmlbuilder": "latest"
