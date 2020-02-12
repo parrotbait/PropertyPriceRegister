@@ -384,7 +384,7 @@ async function processCSVFile(inputPath) {
       //   { NAME: 'Daffy Duck', AGE: '24' },
       //   { NAME: 'Bugs Bunny', AGE: '22' }
       // ]
-      for (let i = 1; i < results.length; i) {
+      for (let i = 1; i < results.length; i += 1) {
         const row = results[i]
         if (i % 10000 === 0) {
           console.log(`Processed ${i}/${results.length} records`)
@@ -412,8 +412,7 @@ async function processCSVFile(inputPath) {
         await trx.commit()
       }
 
-      const counties = { context }
-      await outputBingFiles(counties)
+      await outputBingFiles(context.counties)
 
       console.log('Finished processing records')
       process.exit(0)
@@ -431,9 +430,9 @@ async function moveAddressToRejected(trx, existingAddress) {
 async function updateAddressForBingResult(trx, existingAddress, bingResult) {
   if (!bingResult || !bingResult.place_id) {
     if (!bingResult) {
-      console.log('No bing result')
+      console.log(`No bing result for address: '${existingAddress}'`)
     } else if (!bingResult.place_id) {
-      console.log('No bing place_id')
+      console.log(`No bing place_id for address: '${existingAddress}'`)
     }
 
     await moveAddressToRejected(trx, existingAddress)

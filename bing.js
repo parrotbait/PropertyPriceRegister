@@ -26,30 +26,30 @@ function validateProperty(json, prop, reject) {
 
 function getResourceData(json, reject) {
   if (!validateProperty(json, 'resourceSets', reject)) return null
-  const resourceSets = { json }
+  const { resourceSets = [] } = json
   if (resourceSets.length === 0) {
     reject('Expected at least 1 resourceSet')
     return null
   }
   const firstRS = resourceSets[0]
-  if (!validateProperty(firstRS, 'estimatedTotal', reject)) return null
-  if (firstRS.estimatedTotal === 0) {
+  if (!firstRS) return null
+  const { estimatedTotal = 0 } = firstRS
+  if (estimatedTotal === 0) {
     reject('Expected at least 1 resource created')
     return null
   }
-  if (!validateProperty(firstRS, 'resources', reject)) return null
-  const resourcesList = firstRS.resources
-  if (resourcesList.length === 0) {
+  const { resources = [] } = firstRS
+  if (resources.length === 0) {
     reject('Expected at least 1 resource to process')
     return null
   }
 
-  return resourcesList[0]
+  return resources[0]
 }
 
 function getResourceLinkData(resource, reject) {
   if (!validateProperty(resource, 'links', reject)) return null
-  const links = { resource }
+  const { links = [] } = resource
   if (links.length === 0) {
     reject('Expected at least 1 link')
     return null
@@ -93,7 +93,7 @@ async function startGeocodeJob(xmlFile) {
 
         const json = JSON.parse(body)
         const resource = getResourceData(json, reject)
-        if (!resource) return Promise()
+        if (!resource) return reject(new Error('Missing resource'))
         const links = getResourceLinkData(resource, reject)
         const linkData = links[0]
         if (!validateProperty(linkData, 'url', reject)) {
@@ -124,7 +124,7 @@ function parseGeocodeJobStatusResult(response) {
       return reject(new Error('Expected failed entity count'))
     if (!validateProperty(resource, 'processedEntityCount'))
       return reject(new Error('Expected processed entity count'))
-    const failedEntityCount = { resource }
+    const { failedEntityCount } = resource
     const processedCount = resource.processedEntityCount
 
     const finalLinks = ['', '']
@@ -136,12 +136,12 @@ function parseGeocodeJobStatusResult(response) {
       if (!validateProperty(linkData, 'url')) {
         return reject(new Error('Missing url'))
       }
-      const url = { linkData }
+      const { url } = linkData
       if (linkData.role === 'output') {
         if (!validateProperty(linkData, 'name')) {
           return reject(new Error('Missing name'))
         }
-        const name = { linkData }
+        const { name } = linkData
         if (name === 'succeeded') {
           if (processedCount) {
             finalLinks[0] = `${url}?key=${bingApiKey}`
@@ -184,7 +184,7 @@ function parseGeocodeSuccessResultData(response, onAddressDeterminedCallback) {
       console.log(`Processing bing entity ${i}/${entities.length}`)
       const entity = entities[i]
       const address = utils.decodeBase64(entity.attributes.Id)
-      const elements = { entity }
+      const { elements } = entity
       if (elements.length === 0) {
         onAddressDeterminedCallback(address, null, null)
         // eslint-disable-next-line no-continue
@@ -198,7 +198,7 @@ function parseGeocodeSuccessResultData(response, onAddressDeterminedCallback) {
             process.exit()
           }
 
-          const attributes = { elem }
+          const { attributes } = elem
           if (
             attributes.EntityType &&
             attributes.EntityType.toLowerCase() !== 'address'
@@ -492,11 +492,14 @@ module.exports = {
       if (property.place_id) continue
 
       const county = Object.keys(counties).reduce((p, c) => {
-        if (counties[c] === property.county) return { id: counties[c], name: c }
-        return p
+        let result = { ...p }
+        if (counties[c] === property.county) {
+          result = { id: counties[c], name: c }
+        }
+        return result
       }, {})
 
-      if (!county) continue
+      if (!county || !county.name) continue
       const stringHash = utils.encodeBase64(property.original_address)
       const node = xml.ele('GeocodeEntity', {
         Id: stringHash,
