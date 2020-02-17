@@ -1,5 +1,6 @@
 import React, { Component, createRef } from 'react'
 import MarkerClusterer from '@google/markerclusterer'
+import moment from 'moment'
 import * as Price from './Price'
 
 class GoogleMap extends Component {
@@ -75,9 +76,9 @@ class GoogleMap extends Component {
                     </tr>
                 ` +
                 property.sales.map((value, index) => {
-                    return `
+                  return `
                     <tr>
-                        <td align="left">` + value.date.day + '/' + value.date.month + '/' + value.date.year + `</td>
+                        <td align="left">${moment(value.date).format('Do MMMM YYYY')}</td>
                         <td align="left"><strong>€` + Price.formatMoney(parseInt(value.price)) + `</strong></td>
                       </tr>
                       `

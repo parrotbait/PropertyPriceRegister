@@ -12,7 +12,7 @@ import 'react-dates/lib/css/_datepicker.css';
 import './App.css';
 
 var moment = require('moment');
-const baseUrl = "http://ppr.local/api"
+const baseUrl = "http://localhost:4000/api"
 
 class App extends Component {
   
@@ -72,7 +72,7 @@ class App extends Component {
         minPrice: prevState.query.minPrice,
         maxPrice: prevState.query.maxPrice,
         counties: [
-          counties.map(x => x.id) ] 
+          counties.map(x => x.name) ] 
         }
     }), () => { this.refreshProperties() })
   };
@@ -182,7 +182,7 @@ class App extends Component {
                 
                 
           <Container>
-          <p className="text-center">
+          <span className="text-center">
               <p>
                 A couple of years ago when buying a house I encountered the Property Price Register for the first time.
                 The <a target="_blank" rel="noopener noreferrer" href="https://www.propertypriceregister.ie/website/npsra/pprweb.nsf/PPR?OpenForm">existing government site</a> leaves a lot to be desired.
@@ -199,7 +199,7 @@ class App extends Component {
                 <p>
                   Over time I hope to add more insights such as trends to this site. I'm also looking to open up an API for those who are interested in using this data. More will be announced soon.
                 </p>
-            </p>
+            </span>
             <br/>
             <Row>
               <Container>
@@ -362,21 +362,21 @@ class App extends Component {
       if (query.length !== 0) {
         query += "&";
       }
-      query += "min-price=" + this.state.query.minPrice;
+      query += "min_price=" + this.state.query.minPrice;
     }
 
     if (this.state.query.maxPrice) {
       if (query.length !== 0) {
         query += "&";
       }
-      query += "max-price=" + this.state.query.maxPrice;
+      query += "max_price=" + this.state.query.maxPrice;
     }
 
     if (this.state.query.text) {
       if (query.length !== 0) {
         query += "&";
       }
-      query += "text=" + encodeURIComponent(this.state.query.text)
+      query += "query=" + encodeURIComponent(this.state.query.text)
     }
 
     if (query.length > 0) {
