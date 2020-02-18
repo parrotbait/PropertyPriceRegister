@@ -158,133 +158,133 @@ function parseGeocodeJobStatusResult(response) {
   })
 }
 
-function parseGeocodeSuccessResultData(response, onAddressDeterminedCallback) {
-  return new Promise((resolve, reject) => {
-    const options = { ignoreComment: true, alwaysChildren: true }
-    const root = xmlConverter.xml2js(response, options)
+async function parseGeocodeSuccessResultData(response, onAddressDeterminedCallback) {
+  const options = { ignoreComment: true, alwaysChildren: true }
+  const root = xmlConverter.xml2js(response, options)
 
-    if (typeof root !== 'object' || !root.elements) {
-      return reject(new Error('Missing or invalid root object element'))
+  if (typeof root !== 'object' || !root.elements) {
+    throw new Error('Missing or invalid root object element')
+  }
+  const feed = root.elements
+  if (!Array.isArray(feed) || feed.length === 0) {
+    throw new Error('Missing or invalid size feed array')
+  }
+  const feedRoot = feed[0]
+  if (!Object.prototype.hasOwnProperty.call(feedRoot, 'elements')) {
+    // eslint-disable-next-line quotes
+    throw new Error("Missing 'elements' key")
+  }
+  const entities = feed[0].elements
+  if (!Array.isArray(entities) || entities.length === 0) {
+    console.log('Expected 5 elements returned!')
+    throw new Error('Missing or invalid size entities array')
+  }
+
+  for (let i = 0; i < entities.length; i += 1) {
+    console.log(`Processing bing entity ${i}/${entities.length}`)
+    const entity = entities[i]
+    const address = utils.decodeBase64(entity.attributes.Id)
+    const { elements } = entity
+    if (elements.length === 0) {
+      console.log(`No bing entities found for address ${address}`)
+      await onAddressDeterminedCallback(address, null, null)
+      // eslint-disable-next-line no-continue
+      continue
     }
-    const feed = root.elements
-    if (!Array.isArray(feed) || feed.length === 0) {
-      return reject(new Error('Missing or invalid size feed array'))
-    }
-    const feedRoot = feed[0]
-    if (!Object.prototype.hasOwnProperty.call(feedRoot, 'elements')) {
-      // eslint-disable-next-line quotes
-      return reject(new Error("Missing 'elements' key"))
-    }
-    const entities = feed[0].elements
-    if (!Array.isArray(entities) || entities.length === 0) {
-      return reject(new Error('Missing or invalid size entities array'))
-    }
+    for (let j = 0; j < elements.length; j += 1) {
+      const elem = elements[j]
+      if (elem.name === 'GeocodeResponse') {
+        if (elem.elements.length !== 5) {
+          console.log('Expected 5 elements returned!')
+          process.exit()
+        }
 
-    for (let i = 0; i < entities.length; i += 1) {
-      console.log(`Processing bing entity ${i}/${entities.length}`)
-      const entity = entities[i]
-      const address = utils.decodeBase64(entity.attributes.Id)
-      const { elements } = entity
-      if (elements.length === 0) {
-        onAddressDeterminedCallback(address, null, null)
-        // eslint-disable-next-line no-continue
-        continue
-      }
-      for (let j = 0; j < elements.length; j += 1) {
-        const elem = elements[j]
-        if (elem.name === 'GeocodeResponse') {
-          if (elem.elements.length !== 5) {
-            console.log('Expected 5 elements returned!')
-            process.exit()
-          }
-
-          const { attributes } = elem
-          if (
-            attributes.EntityType &&
-            attributes.EntityType.toLowerCase() !== 'address'
-          ) {
-            onAddressDeterminedCallback(address, null, null)
-            // eslint-disable-next-line no-continue
-            continue
-          }
-          console.log(`Confidence ${elem.attributes.Confidence}`)
-          // <Address AddressLine="14 Beaufield Grove" AdminDistrict="County Kildare" CountryRegion="Ireland"
-          // FormattedAddress="14 Beaufield Grove, Naas, County Kildare, W23 Y7K8, Ireland"
-          // Locality="Naas" PostalCode="W23 Y7K8" />
-          const addressComponents = elem.elements[0]
-          // elements 1,2,3 don't 'appear' to be relevant
-          // let geocodePoint = elem.elements[1]
-          // let geocodePoint = elem.elements[2]
-          // let address = elem.elements[3]
-          // <Point Latitude="53.37383" Longitude="-6.5989" />
-          const point = elem.elements[4]
-          const lat = point.attributes.Latitude
-          const lon = point.attributes.Longitude
-
-          const addressResult = {}
-          addressResult.address_components = addressComponents.attributes
-          addressResult.address = addressComponents.attributes.FormattedAddress
-          addressResult.lat = lat
-          addressResult.lon = lon
-          addressResult.place_id = entity.attributes.Id
-          addressResult.postcode = addressComponents.attributes.PostalCode
-
-          onAddressDeterminedCallback(address, addressResult, null)
+        const { attributes } = elem
+        if (
+          attributes.EntityType &&
+          attributes.EntityType.toLowerCase() !== 'address'
+        ) {
+          console.log(`Invalid entity type '${attributes.EntityType.toLowerCase()}' for address ${address}`)
+          await onAddressDeterminedCallback(address, null, null)
           // eslint-disable-next-line no-continue
           continue
         }
+        console.log(`Confidence ${elem.attributes.Confidence}`)
+        // <Address AddressLine="14 Beaufield Grove" AdminDistrict="County Kildare" CountryRegion="Ireland"
+        // FormattedAddress="14 Beaufield Grove, Naas, County Kildare, W23 Y7K8, Ireland"
+        // Locality="Naas" PostalCode="W23 Y7K8" />
+        const addressComponents = elem.elements[0]
+        // elements 1,2,3 don't 'appear' to be relevant
+        // let geocodePoint = elem.elements[1]
+        // let geocodePoint = elem.elements[2]
+        // let address = elem.elements[3]
+        // <Point Latitude="53.37383" Longitude="-6.5989" />
+        const point = elem.elements[4]
+        const lat = point.attributes.Latitude
+        const lon = point.attributes.Longitude
+
+        const addressResult = {}
+        addressResult.address_components = addressComponents.attributes
+        addressResult.address = addressComponents.attributes.FormattedAddress
+        addressResult.lat = lat
+        addressResult.lon = lon
+        addressResult.place_id = entity.attributes.Id
+        addressResult.postcode = addressComponents.attributes.PostalCode
+
+        console.log(`Found match with bing place_id ${entity.attributes.Id} for address ${address}`)
+        await onAddressDeterminedCallback(address, addressResult, null)
+        // eslint-disable-next-line no-continue
+        continue
       }
-      console.log(`onAddressDeterminedCallback ${address}`)
-      onAddressDeterminedCallback(address, null, null)
     }
-    return resolve(true)
-  })
+  }
+  return true
 }
 
-function parseGeocodeFailedResultData(response, onAddressDeterminedCallback) {
-  return new Promise((resolve, reject) => {
-    const options = { ignoreComment: true, alwaysChildren: true }
-    const root = xmlConverter.xml2js(response, options)
-    if (typeof root === 'object' && root.elements) {
-      const feed = root.elements
-      if (Array.isArray(feed) && feed.length > 0) {
-        for (let outer = 0; outer < feed.length; outer += 1) {
-          const feedRoot = feed[outer]
-          if (
-            !Object.prototype.hasOwnProperty.call(feedRoot, 'name') ||
-            feedRoot.name !== 'GeocodeEntity'
-          ) {
-            console.log('Missing name property')
-            // eslint-disable-next-line no-continue
-            continue
-          }
-          if (Object.prototype.hasOwnProperty.call(feedRoot, 'elements')) {
-            const entities = feed[0].elements
-            if (Array.isArray(entities) && entities.length) {
-              for (let i = 0; i < entities.length; i += 1) {
-                const entity = entities[i]
-                const address = utils.decodeBase64(entity.attributes.Id)
-                onAddressDeterminedCallback(address, null, {})
-              }
-            } else {
-              console.log('Missing or invalid size entities array')
-              return reject(new Error('Missing or invalid size entities array'))
+async function parseGeocodeFailedResultData(response, onAddressDeterminedCallback) {
+  const options = { ignoreComment: true, alwaysChildren: true }
+  const root = xmlConverter.xml2js(response, options)
+  if (typeof root === 'object' && root.elements) {
+    const feed = root.elements
+    //console.log(`Failed geocode with error ${JSON.stringify(root, null, 4)}`)
+    if (Array.isArray(feed) && feed.length > 0) {
+      for (let outer = 0; outer < feed.length; outer += 1) {
+        const feedRoot = feed[outer]
+        if (
+          !Object.prototype.hasOwnProperty.call(feedRoot, 'name') ||
+          feedRoot.name !== 'GeocodeFeed'
+        ) {
+          console.log('Missing or incorrect name property')
+          // eslint-disable-next-line no-continue
+          continue
+        }
+        if (Object.prototype.hasOwnProperty.call(feedRoot, 'elements')) {
+          const entities = feed[0].elements
+          if (Array.isArray(entities) && entities.length) {
+            for (let i = 0; i < entities.length; i += 1) {
+              const entity = entities[i]
+              const address = utils.decodeBase64(entity.attributes.Id)
+              console.log(`Failed to decode ${address}`)
+              await onAddressDeterminedCallback(address, null, {})
             }
           } else {
-            console.log('Missing elements key')
-            return reject(new Error('Missing "elements" key'))
+            console.log('Missing or invalid size entities array')
+            throw new Error('Missing or invalid size entities array')
           }
+        } else {
+          console.log('Missing elements key')
+          throw new Error('Missing "elements" key')
         }
-      } else {
-        console.log('Missing or invalid size feed array')
-        return reject(new Error('Missing or invalid size feed array'))
       }
     } else {
-      console.log('Missing or invalid root object element')
-      return reject(new Error('Missing or invalid root object element'))
+      console.log('Missing or invalid size feed array')
+      throw new Error('Missing or invalid size feed array')
     }
-    return resolve(true)
-  })
+  } else {
+    console.log('Missing or invalid root object element')
+    throw new Error('Missing or invalid root object element')
+  }
+  return true
 }
 
 function fetchGeocodeJobStatus(url) {
@@ -312,7 +312,7 @@ async function processGeocodeJobRequest(
   // Index 0 is success, index 1 if failure
   const resultUrls = await parseGeocodeJobStatusResult(jobStatusResult).catch(
     err => {
-      if (err === 601) {
+      if (err.toString() === "Error: 601") {
         console.log('Failed to fetch bing data, retry required')
         retry = true
       } else {

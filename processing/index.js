@@ -459,7 +459,7 @@ async function updateAddressForBingResult(trx, existingAddress, bingResult) {
 
 async function handleAddressDetermined(address, addressResult) {
   const trx = await knex.transaction()
-  console.log(`Address determined ${address}`)
+  console.log(`Processing address ${address}`)
   try {
     await updateAddressForBingResult(trx, address, addressResult)
   } catch (err) {
