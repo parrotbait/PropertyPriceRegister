@@ -208,11 +208,6 @@ function fixAddress(address) {
 }
 
 async function syncPropertySales(trx, address, row, property, currentSale) {
-  if (currentSale.price < 20000) {
-    // Ignore this property - probably some error
-    return Promise()
-  }
-
   const currentSaleDate = moment(row.date, 'DD/MM/YYYY', true)
   const sqlDate = currentSaleDate.format('YYYY/MM/DD')
   const lastSaleRS = await trx('sales')
@@ -229,6 +224,13 @@ async function syncPropertySales(trx, address, row, property, currentSale) {
   }
 
   const lastSalesList = lastSaleRS.shift()
+  if (!lastSalesList) {
+    return trx('sales').insert({
+      property_id: property.id,
+      price: currentSale.price,
+      date: sqlDate
+    })
+  }
   for (let i = 0; i < lastSalesList.length; i += 1) {
     const lastSale = lastSalesList[i]
     const lastSaleDate = moment(lastSale.date, 'DD/MM/YYYY', true)
@@ -292,7 +294,7 @@ async function processCSVRowInternal(trx, row) {
   const address = fixAddress(originalAddress)
   if (!address) {
     console.log(
-      `Ignoring property at row ${row} with invalid address: '${originalAddress}'`
+      `Ignoring property with invalid address: '${originalAddress}'`
     )
     await addToRejected(trx, originalAddress)
     return false
@@ -325,6 +327,10 @@ async function processCSVRowInternal(trx, row) {
     }
   )
 
+  if (currentSale.price < 20000) {
+    // Ignore this property - probably some error
+    return false
+  }
   await syncPropertySales(trx, address, row, property, currentSale)
   return true
 }
