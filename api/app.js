@@ -23,5 +23,6 @@ app.listen(process.env.PORT, () =>
 const context = { knex, app }
 exports.context = context
 
+require('./api/property')
 require('./api/properties')
 require('./api/counties')

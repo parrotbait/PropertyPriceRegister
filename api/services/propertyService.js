@@ -9,6 +9,7 @@ class PropertyService {
     const query = this.propertyModel
       .query()
       .select(
+        'uuid',
         'address',
         'property_county.name as county',
         'lat',
@@ -58,6 +59,10 @@ class PropertyService {
       query.limit(params.limit)
     }
     
+    if (params.id) {
+      query.where('uuid', params.id)
+    }
+
     if (params.county) {
       query.whereRaw('LOWER(`property_county`.`name`) = ?', [
         params.county.toLowerCase()
@@ -67,7 +72,6 @@ class PropertyService {
     if (params.query) {
       query.whereRaw('LOWER(address) LIKE ?', [`%${params.query}%`])
     }
-
     
     //query.debug()
     return query
