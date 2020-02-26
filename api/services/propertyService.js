@@ -10,11 +10,9 @@ class PropertyService {
       .query()
       .select(
         'uuid',
-        'address',
         'property_county.name as county',
         'lat',
-        'lon',
-        'postcode'
+        'lon'
       )
       .withGraphJoined('sales(selectSalesData, queryFilters, orderByCriteria)', {joinOperation: 'innerJoin'})
       .modifiers({
@@ -59,10 +57,6 @@ class PropertyService {
       query.limit(params.limit)
     }
     
-    if (params.id) {
-      query.where('uuid', params.id)
-    }
-
     if (params.county) {
       query.whereRaw('LOWER(`property_county`.`name`) = ?', [
         params.county.toLowerCase()
@@ -73,7 +67,36 @@ class PropertyService {
       query.whereRaw('LOWER(address) LIKE ?', [`%${params.query}%`])
     }
     
-    //query.debug()
+    return query
+  }
+
+  async fetchOne(params) {
+    const query = this.propertyModel
+      .query()
+      .select(
+        'uuid',
+        'address',
+        'property_county.name as county',
+        'lat',
+        'lon'
+      )
+      .withGraphJoined('sales(selectSalesData, orderByCriteria)', {joinOperation: 'innerJoin'})
+      .modifiers({
+        selectSalesData: builder => {
+          builder.select('price', 'date');
+        },
+        orderByCriteria: builder => {
+          if (params.order && params.sort) {
+            builder.orderBy(params.sort, params.order)
+          } else {
+            builder.orderBy('date', 'desc')
+          }
+        }
+      })
+      .joinRelated('property_county')
+      .whereNotNull('place_id')
+      .where('uuid',  params.id)
+
     return query
   }
 }

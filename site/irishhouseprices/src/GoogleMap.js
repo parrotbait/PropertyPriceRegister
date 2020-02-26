@@ -1,4 +1,4 @@
-import React, { Component, createRef } from 'react'
+import React, { Component } from 'react'
 import MarkerClusterer from '@google/markerclusterer'
 import moment from 'moment'
 import * as Price from './Price'
@@ -7,6 +7,7 @@ class GoogleMap extends Component {
   googleMapRef = React.createRef()
   googleMapScript = null
   markerCluster = null
+  propertyLoader = null
 
   componentDidMount() {
     this.googleMapScript = document.createElement('script')
@@ -39,66 +40,69 @@ class GoogleMap extends Component {
   }
 
   loadMarkers = () => {
-    if (this.props.markers != null && 
-        this.props.properties != null && 
-        this.googleMap != null) {
-        var options = {
-            imagePath: '/assets/m'
-        };
+    if (!this.props.propertyLoader) return
+    if (!this.props.markers) return
+    if (!this.props.properties) return
+    if (!this.googleMap) return
 
-        console.log(this.props.markers.length + " markers found")
-        var infowindow = new window.google.maps.InfoWindow({
-            content: "<div><h1>PPR</h1></div>"
-        });
+      var options = {
+          imagePath: '/assets/m'
+      };
 
-        if (this.markerCluster != null) {
-          this.markerCluster.clearMarkers()
-        }
+      let propertyLoader = this.props.propertyLoader
+      //console.log(this.props.markers.length + " markers found")
+      var infowindow = new window.google.maps.InfoWindow({
+          content: "<div><h1>PPR</h1></div>"
+      });
 
-        let markers = new Array(this.props.markers.length)
-        for (let i = 0; i < this.props.markers.length; ++i) {
-            let marker = this.props.markers[i]
-            let gmapMarker = new window.google.maps.Marker({
-                position: { lat: marker.latitude, lng: marker.longitude },
-                map: this.googleMap,
-              })
-            markers[i] = gmapMarker
-            let property =  this.props.properties[i]
-            gmapMarker.addListener('click', function() {
-                infowindow.setContent(`
-                <div>
-                <h2 id="firstHeading">` + property.address+ `</h2>
-                <div>
-                <div id="bodyContent">
-                  <table width="75%">
-                    <tr>
-                      <th align="left">Date</th><th align="left">Price</th>
-                    </tr>
-                ` +
-                property.sales.map((value, index) => {
-                  return `
-                    <tr>
-                        <td align="left">${moment(value.date).format('Do MMMM YYYY')}</td>
-                        <td align="left"><strong>€` + Price.formatMoney(parseInt(value.price)) + `</strong></td>
-                      </tr>
-                      `
-                  })
-                  + `
-                  </table>
-                </div>
-                <br>
-                <p>Note: All data has been sourced from the Property Price Register of Ireland.</p>
-                <p>This data is not always reliable.</p>
-                <p>See <a href="https://medium.com/@parrotbait/the-property-price-register-a-rant-f55ca421e798" target="_blank" rel="noopener noreferrer">here</a> for more info of the flaws.</p>
-                </div>
-              </div>
-                `)
-                infowindow.open(this.googleMap, gmapMarker);
-            });
-        }
-        
-        this.markerCluster = new MarkerClusterer(this.googleMap, markers, options)
+      if (this.markerCluster != null) {
+        this.markerCluster.clearMarkers()
       }
+
+      let markers = new Array(this.props.markers.length)
+      let propertyLoadFunctor = function(property) {
+        let saleText = property.sales.map((value, index) => {
+          return `
+            <tr>
+              <td align="left">${moment(value.date).format('Do MMMM YYYY')}</td>
+              <td align="left"><strong>€${Price.formatMoney(parseInt(value.price))}</strong></td>
+            </tr>`
+          })
+        infowindow.setContent(`
+          <div>
+            <h2 id="firstHeading">${property.address}</h2>
+            <table width="75%">
+              <tr>
+                <th align="left">Date</th><th align="left">Price</th>
+              </tr>
+              ${saleText.join("")}
+            </table>
+            <br>
+            <p>Note: All data has been sourced from the Property Price Register of Ireland.</p>
+            <p>This data is not always reliable.</p>
+            <p>See <a href="https://medium.com/@parrotbait/the-property-price-register-a-rant-f55ca421e798" target="_blank" rel="noopener noreferrer">here</a> for more info of the flaws.</p>
+          </div>
+        `)
+      }
+      for (let i = 0; i < this.props.markers.length; ++i) {
+          let marker = this.props.markers[i]
+          let gmapMarker = new window.google.maps.Marker({
+              position: { lat: marker.latitude, lng: marker.longitude },
+              map: this.googleMap,
+            })
+          markers[i] = gmapMarker
+          let id_to_load =  marker.id
+          gmapMarker.addListener('click', function() {
+            infowindow.setContent(`Loading...`)
+            infowindow.open(this.googleMap, gmapMarker);
+            if (propertyLoader) {
+              //console.log("laoding " + id_to_load)
+              propertyLoader(id_to_load, propertyLoadFunctor)
+            }
+          });
+      }
+      
+      this.markerCluster = new MarkerClusterer(this.googleMap, markers, options)
   }
 
   createMarker = () => {

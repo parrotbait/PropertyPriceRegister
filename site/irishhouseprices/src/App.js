@@ -34,8 +34,18 @@ class App extends Component {
       endDate: "2018-05-01"
     },
     counties: [],
-    properties: []
+    properties: [],
   };
+
+  propertyLoader = (id, callback) => {
+    const url = baseUrl + `/property?id=${id}`;
+    const request = new Request(url)
+    fetch(request, {mode: 'cors'})
+    .then(res => res.json())
+    .then((property) => {
+      callback(property)
+    })
+  }
 
   onMarkerClick = (props, marker, e) =>
     this.setState({
@@ -78,7 +88,7 @@ class App extends Component {
   };
 
   onStartDateChanged = (date) => {
-    console.log(date)
+    //console.log(date)
     let date_obj = new Date(date)
     let formatted_date = date_obj.getFullYear() + '-' + (date_obj.getMonth() + 1) + '-' + date_obj.getDate()
     this.setState(prevState => ({
@@ -94,7 +104,7 @@ class App extends Component {
   }
 
   onEndDateChanged = (date) => {
-    console.log(date)
+    //console.log(date)
     let date_obj = new Date(date)
     let formatted_date = date_obj.getFullYear() + '-' + (date_obj.getMonth() + 1) + '-' + date_obj.getDate()
     this.setState(prevState => ({
@@ -292,7 +302,7 @@ class App extends Component {
               <br></br>
               </Row>
             <Row>
-              <GoogleMap markers={this.state.stores} properties={this.state.properties} />
+              <GoogleMap markers={this.state.stores} properties={this.state.properties} propertyLoader={this.propertyLoader} />
             </Row>
             <br/>
           </Container>
@@ -382,14 +392,14 @@ class App extends Component {
     if (query.length > 0) {
         url = url + "?" + query;
     }
-    console.log("url - " + url)
+    //console.log("url - " + url)
     var request = new Request(url)
     fetch(request, {mode: 'cors'})
     .then(res => res.json())
     .then((properties) => {
       let markers = []
       for (let i = 0; i < properties.length; ++i) {
-        markers.push({latitude:properties[i].lat, longitude: properties[i].lon})
+        markers.push({ id: properties[i].uuid, latitude:properties[i].lat, longitude: properties[i].lon })
       }
       this.setState({ stores: markers, properties: properties, is_loading: false })
     })

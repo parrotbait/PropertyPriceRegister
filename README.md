@@ -14,6 +14,14 @@ The JS attempts to go through the records, salvage what it can and clean up the 
 It then should attempt to match up records to latitutde and longitudes via a reverse geocode.
 Places that are successfully reverse geocoded can then be used, we reject locations that cannot be found.
 
+### Pre-requisites
+
+Homebrew
+Node
+NPM
+Mysql
+JDK (for mysql)
+
 ### Usage
 
 First install any dependencies via `npm install`
