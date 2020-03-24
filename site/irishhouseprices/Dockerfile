@@ -14,6 +14,6 @@ COPY . .
 RUN npm install
 
 # Expose ports (for orchestrators and dynamic reverse proxies)
-EXPOSE 3000
+EXPOSE 4000
 
 CMD [ "npm", "start" ]

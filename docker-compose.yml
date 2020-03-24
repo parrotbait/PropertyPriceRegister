@@ -24,29 +24,27 @@ services:
     ports:
       - "3307:3306"
     command: --default-authentication-plugin=mysql_native_password
-  #processing:
-  #  build:
-  #    dockerfile: Dockerfile
-  #    context: processing
-  #  restart: unless-stopped
-  #  env_file: processing/.env
-  #  volumes:
-  #    - "./processing:/app"
-  #  environment:
-  #    - DB_HOST=${DB_HOST}
-  #    - DB_NAME=${DB_NAME}
-  #    - DB_USER=${DB_USER}
-  #    - DB_PASSWORD=${DB_PASSWORD}
-  #    - EMAIL_FROM=${EMAIL_FROM}
-  #    - EMAIL_PASSWORD=${EMAIL_PASSWORD}
-  #    - EMAIL_TO=${EMAIL_TO}
-  #    - BING_DIRECTORY=${BING_DIRECTORY}
-  #    - BING_API_KEYS=${BING_API_KEYS}
+  processing:
+    build:
+      dockerfile: Dockerfile
+      context: processing
+    restart: unless-stopped
+    env_file: processing/.env
+    volumes:
+      - "./processing:/app"
+    ports:
+      - "5340:5341"
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PORT=${DB_PORT}
+      - DB_PASSWORD=${DB_PASSWORD}
     #labels:
     #  - "traefik.enable=true"
     #  - "traefik.frontend.rule=Host:app.test.localhost.tv"
-   # depends_on:
-   #   - db
+    depends_on:
+      - db
   api:
     build:
       dockerfile: Dockerfile
@@ -63,11 +61,6 @@ services:
       - DB_USER=${DB_USER}
       - DB_PORT=${DB_PORT}
       - DB_PASSWORD=${DB_PASSWORD}
-      - EMAIL_FROM=${EMAIL_FROM}
-      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
-      - EMAIL_TO=${EMAIL_TO}
-      - BING_DIRECTORY=${BING_DIRECTORY}
-      - BING_API_KEYS=${BING_API_KEYS}
     #labels:
     #  - "traefik.enable=true"
     #  - "traefik.frontend.rule=Host:app.test.localhost.tv"

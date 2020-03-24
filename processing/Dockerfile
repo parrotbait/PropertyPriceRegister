@@ -14,6 +14,10 @@ COPY . .
 RUN npm install
 
 # Expose ports (for orchestrators and dynamic reverse proxies)
-EXPOSE 3000
+EXPOSE 5000
 
-CMD [ "npm", "start" ]
+CMD [ "npm", "run", "parse", "PPR-ALL.csv" ]
+
+COPY runBingFind.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+entrypoint "/entrypoint.sh"
