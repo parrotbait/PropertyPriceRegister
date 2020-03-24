@@ -68,19 +68,26 @@ class GoogleMap extends Component {
               <td align="left"><strong>€${Price.formatMoney(parseInt(value.price))}</strong></td>
             </tr>`
           })
+          let extraContent = ''
+          if (!localStorage.getItem('seen-disclaimer')) {
+            extraContent = `
+            <br>
+            <p>Note: All data has been sourced from the Property Price Register of Ireland.</p>
+            <p>This data is not always reliable.</p>
+            <p>See <a href="https://medium.com/@parrotbait/the-property-price-register-a-rant-f55ca421e798" target="_blank" rel="noopener noreferrer">here</a> for more info of the flaws.</p>
+            `
+            localStorage.setItem('seen-disclaimer', 'true')
+          }
         infowindow.setContent(`
-          <div>
-            <h2 id="firstHeading">${property.address}</h2>
+          <div class="container-fluid">
+            <h4>${property.address}</h4>
             <table width="75%">
               <tr>
                 <th align="left">Date</th><th align="left">Price</th>
               </tr>
               ${saleText.join("")}
             </table>
-            <br>
-            <p>Note: All data has been sourced from the Property Price Register of Ireland.</p>
-            <p>This data is not always reliable.</p>
-            <p>See <a href="https://medium.com/@parrotbait/the-property-price-register-a-rant-f55ca421e798" target="_blank" rel="noopener noreferrer">here</a> for more info of the flaws.</p>
+            ${extraContent}
           </div>
         `)
       }
@@ -95,6 +102,8 @@ class GoogleMap extends Component {
           gmapMarker.addListener('click', function() {
             infowindow.setContent(`Loading...`)
             infowindow.open(this.googleMap, gmapMarker);
+            let center = new window.google.maps.LatLng(marker.latitude, marker.lotitude)
+            gmapMarker.map.setCenter(center)
             if (propertyLoader) {
               //console.log("laoding " + id_to_load)
               propertyLoader(id_to_load, propertyLoadFunctor)
