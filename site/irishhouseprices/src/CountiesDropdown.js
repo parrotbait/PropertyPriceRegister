@@ -81,7 +81,7 @@ export default class CountiesDropdown extends Component {
     return (
         <Dropdown onSelect={this.onCountySelected}>
             <Dropdown.Toggle as={CustomToggle} id="dropdown-custom-components">
-                Click to change
+                Change
             </Dropdown.Toggle>
 
             <Dropdown.Menu as={CustomMenu} onSelect={function(e){alert(e);}}>

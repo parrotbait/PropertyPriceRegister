@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Col, Row, Container, Dropdown, Form, DropdownButton } from 'react-bootstrap'
+import { Col, Nav, Navbar, Row, Container, Dropdown, Form, DropdownButton } from 'react-bootstrap'
 import CountiesDropdown from './CountiesDropdown'
 import GoogleMap from './GoogleMap'
 import * as Price from './Price'
@@ -7,6 +7,7 @@ import debounce from 'lodash/debounce';
 import 'react-dates/initialize';
 import LoadingOverlay from 'react-loading-overlay';
 import { SingleDatePicker } from 'react-dates';
+import { VERTICAL_ORIENTATION, HORIZONTAL_ORIENTATION } from 'react-dates/constants';
 import 'react-dates/lib/css/_datepicker.css';
 
 import './App.css';
@@ -186,13 +187,103 @@ class App extends Component {
                 active={this.state.is_loading}
                 spinner
                 text='Loading properties...'
-              >
-                <h1 className="text-center">Property Price Register Mapped</h1>
-                <br/>
-                
-                
-          <Container>
-          <span className="text-center">
+              >   
+          <Navbar bg="light" expand="lg" sticky="top">
+            <Navbar.Brand>Property Price Register</Navbar.Brand>
+            <Navbar.Collapse id="responsive-navbar-nav"></Navbar.Collapse>
+            <Nav className="mr-auto">
+              <Row>
+                <Col>
+                  <Row>County</Row>
+                  <Row>
+                    <CountiesDropdown 
+                      counties={this.state.counties}
+                      onCountiesSelected={this.onCountiesSelected}/>
+                  </Row>
+                </Col>
+                <Col>
+                  <Row>Start date</Row>
+                  <Row>
+                    <SingleDatePicker
+                      date={moment(this.state.query.startDate, "YYYY-MM-DD")} // momentPropTypes.momentObj or null
+                      onDateChange={this.onStartDateChanged} // PropTypes.func.isRequired
+                      onFocusChange={({ focused }) => this.setState({ start_price_focussed: focused })}
+                      focused={this.state.start_price_focussed} // PropTypes.bool
+                      keepOpenOnDateSelect={false}
+                      enableOutsideDays={false}
+                      isOutsideRange={() => false}
+                      readOnly={true}
+                      small={true}
+                      withFullScreenPortal={true}
+                      numberOfMonths={1}
+                      id="start-date" // PropTypes.string.isRequired,
+                    />
+                  </Row>
+                </Col>
+                <Col>
+                  <Row>End date</Row>
+                  <Row>
+                    <SingleDatePicker
+                      date={moment(this.state.query.endDate, "YYYY-MM-DD")} // momentPropTypes.momentObj or null
+                      onDateChange={this.onEndDateChanged} // PropTypes.func.isRequired
+                      onFocusChange={({ focused }) => this.setState({ end_date_focussed: focused })}
+                      focused={this.state.end_date_focussed} // PropTypes.bool
+                      keepOpenOnDateSelect={false}
+                      enableOutsideDays={false}
+                      isOutsideRange={() => false}
+                      readOnly={true}
+                      withFullScreenPortal={true}
+                      small={true}
+                      numberOfMonths={1}
+                      id="end-date" // PropTypes.string.isRequired,
+                    />
+                  </Row>
+                </Col>
+                <Col>
+                  <Row>
+                    Min Price
+                  </Row>
+                  <Row>
+                    <DropdownButton 
+                          title={this.state.query.minPrice || "Min Price"}
+                          id={`dropdown-variants-min-price`}
+                          key='min-price'
+                          onSelect={this.onMinPriceSelected}
+                        >
+                      {this.getDropdownOptions(this.state.query.minPrice)}
+                    </DropdownButton>
+                  </Row>
+                </Col>
+                <Col>
+                  <Row>
+                    Max Price
+                  </Row>
+                  <Row>
+                    <DropdownButton 
+                      title={this.state.query.maxPrice || "Max Price"}
+                      id={`dropdown-variants-max-price`}
+                      key='max-price'
+                      onSelect={this.onMaxPriceSelected}
+                    >
+                      {this.getDropdownOptions(this.state.query.maxPrice)}
+                    </DropdownButton>
+                  </Row>
+                </Col>
+                <Col>
+                  <Form.Group>
+                    <Form.Label>Search</Form.Label>
+                    <Form.Control type="input" placeholder="Address" value={this.state.query.text} onChange={this.onTextEntered} />
+                  </Form.Group>
+                </Col>
+              </Row>
+            </Nav>
+          </Navbar>      
+          <Container fluid>
+            <Row>
+              <GoogleMap markers={this.state.stores} properties={this.state.properties} propertyLoader={this.propertyLoader} />
+            </Row>
+            <br/>
+            <span className="text-center">
               <p>
                 A couple of years ago when buying a house I encountered the Property Price Register for the first time.
                 The <a target="_blank" rel="noopener noreferrer" href="https://www.propertypriceregister.ie/website/npsra/pprweb.nsf/PPR?OpenForm">existing government site</a> leaves a lot to be desired.
@@ -210,100 +301,6 @@ class App extends Component {
                   Over time I hope to add more insights such as trends to this site. I'm also looking to open up an API for those who are interested in using this data. More will be announced soon.
                 </p>
             </span>
-            <br/>
-            <Row>
-              <Container>
-                <Row>
-                  <Col>
-                    <Form.Group>
-                      <Form.Label>Address</Form.Label>
-                      <Form.Control type="input" placeholder="Search" value={this.state.query.text} onChange={this.onTextEntered} />
-                    </Form.Group>
-                  </Col>
-                  <Col>
-                    <Row>Select Country</Row>
-                    <Row>
-                      <CountiesDropdown 
-                        counties={this.state.counties}
-                        onCountiesSelected={this.onCountiesSelected}/>
-                    </Row>
-                  </Col>
-                  <Col>
-                    <Row>Start date</Row>
-                    <Row>
-                      <SingleDatePicker
-                        date={moment(this.state.query.startDate, "YYYY-MM-DD")} // momentPropTypes.momentObj or null
-                        onDateChange={this.onStartDateChanged} // PropTypes.func.isRequired
-                        onFocusChange={({ focused }) => this.setState({ start_price_focussed: focused })}
-                        focused={this.state.start_price_focussed} // PropTypes.bool
-                        keepOpenOnDateSelect={false}
-                        enableOutsideDays={false}
-                        isOutsideRange={() => false}
-                        numberOfMonths={3}
-                        id="start-date" // PropTypes.string.isRequired,
-                      />
-                    </Row>
-                  </Col>
-                  <Col>
-                    <Row>End date</Row>
-                    <Row>
-                      <SingleDatePicker
-                        date={moment(this.state.query.endDate, "YYYY-MM-DD")} // momentPropTypes.momentObj or null
-                        onDateChange={this.onEndDateChanged} // PropTypes.func.isRequired
-                        onFocusChange={({ focused }) => this.setState({ end_date_focussed: focused })}
-                        focused={this.state.end_date_focussed} // PropTypes.bool
-                        keepOpenOnDateSelect={false}
-                        enableOutsideDays={false}
-                        isOutsideRange={() => false}
-                        numberOfMonths={3}
-                        id="end-date" // PropTypes.string.isRequired,
-                      />
-                    </Row>
-                  </Col>
-                </Row>
-                <Row>
-                  <Col>
-                    Min Price
-                  </Col>
-                  <Col>
-                    Max Price
-                  </Col>
-                  <Col/>
-                  <Col/>
-                </Row>
-                <Row>
-                  <Col>
-                  <DropdownButton 
-                          title={this.state.query.minPrice || "Min Price"}
-                          id={`dropdown-variants-min-price`}
-                          key='min-price'
-                          onSelect={this.onMinPriceSelected}
-                        >
-                          {this.getDropdownOptions(this.state.query.minPrice)}
-                        </DropdownButton>
-                  </Col>
-                  
-                  <Col>
-                    <DropdownButton 
-                      title={this.state.query.maxPrice || "Max Price"}
-                      id={`dropdown-variants-max-price`}
-                      key='max-price'
-                      onSelect={this.onMaxPriceSelected}
-                    >
-                      {this.getDropdownOptions(this.state.query.maxPrice)}
-                    </DropdownButton>
-                  </Col>
-                  <Col/>
-                  <Col/>
-                </Row>
-              </Container>
-            </Row>
-            <Row>
-              <br></br>
-              </Row>
-            <Row>
-              <GoogleMap markers={this.state.stores} properties={this.state.properties} propertyLoader={this.propertyLoader} />
-            </Row>
             <br/>
           </Container>
         </LoadingOverlay>

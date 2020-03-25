@@ -50,8 +50,7 @@ class GoogleMap extends Component {
       };
 
       let propertyLoader = this.props.propertyLoader
-      //console.log(this.props.markers.length + " markers found")
-      var infowindow = new window.google.maps.InfoWindow({
+      let infowindow = new window.google.maps.InfoWindow({
           content: "<div><h1>PPR</h1></div>"
       });
 
@@ -68,7 +67,7 @@ class GoogleMap extends Component {
               <td align="left"><strong>€${Price.formatMoney(parseInt(value.price))}</strong></td>
             </tr>`
           })
-          let extraContent = ''
+          let extraContent = '<br>'
           if (!localStorage.getItem('seen-disclaimer')) {
             extraContent = `
             <br>
@@ -81,7 +80,7 @@ class GoogleMap extends Component {
         infowindow.setContent(`
           <div class="container-fluid">
             <h4>${property.address}</h4>
-            <table width="75%">
+            <table width="95%">
               <tr>
                 <th align="left">Date</th><th align="left">Price</th>
               </tr>
