@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "debug": "node index.js",
+    "find_bing": "node index.js find bing",
+    "parse": "node index.js parse",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

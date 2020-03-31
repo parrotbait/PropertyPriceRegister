@@ -13,11 +13,6 @@ COPY . .
 # (babel, grunt, webpack, etc.)
 RUN npm install
 
-# Expose ports (for orchestrators and dynamic reverse proxies)
-EXPOSE 5000
-
-CMD [ "npm", "run", "parse", "PPR-ALL.csv" ]
-
-COPY runBingFind.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-entrypoint "/entrypoint.sh"
+CMD npm run $run_command
+#CMD ["echo", "npm run ${run_command}"]
+#CMD ["sh", "-c", "npm run ${RUN_COMMAND}"]

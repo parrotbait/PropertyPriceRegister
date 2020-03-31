@@ -7,6 +7,9 @@ async function sendEmailInternal(processed, log) {
   const fromPw = process.env.EMAIL_PASSWORD
   const transporter = nodemailer.createTransport({
     service: 'gmail',
+    port: 587,
+    secure: false,
+    requireTLS: true,
     auth: {
       user: emailFrom,
       pass: fromPw

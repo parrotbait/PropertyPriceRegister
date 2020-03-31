@@ -6,6 +6,7 @@
   docker tag ppr_api:latest 392489498504.dkr.ecr.eu-west-1.amazonaws.com/ppr_api:latest
 
   docker push 392489498504.dkr.ecr.eu-west-1.amazonaws.com/ppr_api:latest
+
 ## Deploying
 
   aws ecr get-login-password --region eu-west-1
@@ -15,7 +16,7 @@
 
   docker pull 392489498504.dkr.ecr.eu-west-1.amazonaws.com/ppr_api:latest
 
-  docker run --publish 80:<port> --name api --env-file .env -d 392489498504.dkr.ecr.eu-west-1.amazonaws.com/ppr_api
+  docker run --publish 80:4000 --name api --env-file .env -d 392489498504.dkr.ecr.eu-west-1.amazonaws.com/ppr_api
 
   docker ps -a
   docker stop <pid>

@@ -485,7 +485,9 @@ module.exports = {
     if (fs.existsSync(bingPath)) {
       rimraf.sync(bingPath)
     }
-    fs.mkdirSync(bingPath)
+    if (!fs.existsSync(bingPath)) {
+      fs.mkdirSync(bingPath)
+    }
     for (let i = 0; i < properties.length; i += 1) {
       const property = properties[i]
       // Ignore properties that already have decoded places
