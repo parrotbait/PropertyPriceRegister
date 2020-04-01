@@ -5,6 +5,7 @@ const network = require('./network')
 const builder = require('xmlbuilder')
 const rimraf = require('rimraf')
 const path = require('path')
+const moment = require('moment')
 const xmlConverter = require('xml-js')
 const fs = require('fs')
 
@@ -439,7 +440,7 @@ module.exports = {
       // eslint-disable-next-line no-continue
       if (utils.getFileExtension(file) !== 'xml') continue
       const filePath = path.join(xmlPath, file)
-      console.log(`Processing Bing xml file: ${file}`)
+      console.log(`${moment()} -- Processing Bing xml file: ${file}`)
       let res = QUOTA_ERROR
       while (res === QUOTA_ERROR) {
         // eslint-disable-next-line no-await-in-loop

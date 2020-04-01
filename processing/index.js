@@ -427,6 +427,7 @@ async function processCSVFile(inputPath) {
 
 async function moveAddressToRejected(trx, existingAddress) {
   // Remove so it's not re-processed
+  console.log(`Rejecting property ${existingAddress}`)
   await trx('properties')
     .where('original_address', existingAddress)
     .del()
@@ -436,36 +437,59 @@ async function moveAddressToRejected(trx, existingAddress) {
 async function updateAddressForBingResult(trx, existingAddress, bingResult) {
   if (!bingResult || !bingResult.place_id) {
     if (!bingResult) {
-      console.log(`No bing result for address: '${existingAddress}'`)
+      console.log(`${moment()} -- No bing result for address: '${existingAddress}'`)
     } else if (!bingResult.place_id) {
-      console.log(`No bing place_id for address: '${existingAddress}'`)
+      console.log(`${moment()} -- No bing place_id for address: '${existingAddress}'`)
     }
 
-    await moveAddressToRejected(trx, existingAddress)
-    return
+    return moveAddressToRejected(trx, existingAddress)
   }
   console.log(
-    `Updating property with original address ${existingAddress} to ${bingResult.address}`
+    `${moment()} -- Updating property with original address ${existingAddress} to ${bingResult.address}`
   )
 
-  await trx('properties')
+  let existingRecord = await trx('properties')
+                .select('*')
+                .where('address', bingResult.address).first()
+  if (existingRecord) {
+    if (existingRecord.original_address !== existingAddress) {
+      // About to name a record that'll be the same as an existing
+      // This will cause an error, so update all sales for that property to match
+      // So find all sales for that property and update to the existing record
+      let addressToUpdate = await trx('properties')
+                .select('*')
+                .where('original_address', existingAddress).first()
+      if (addressToUpdate) {
+        if (addressToUpdate.id !== existingRecord.id) {
+          console.log(`Matching existing address property: with address ${existingRecord.address} - with original PPR address ${existingRecord.original_address} to address ${bingResult.address}`)
+          await trx('sales')
+            .where('property_id', addressToUpdate.id)
+            .update({
+              property_id: existingRecord.id
+            })
+          await trx('properties')
+            .where('id', addressToUpdate.id)
+            .del()
+          }
+      }
+      return
+    }
+  }
+  return trx('properties')
     .where('original_address', existingAddress)
-    .whereNull('address') // NOTE: this means it will only update once
     .update({
       address: bingResult.address,
       place_id: bingResult.place_id,
       postcode: bingResult.postcode,
       lat: bingResult.lat,
       lon: bingResult.lon,
-      updated: moment()
-        .utc()
-        .format('hh:mm:ss')
+      updated: moment().format('YYYY/MM/DD')
     })
 }
 
 async function handleAddressDetermined(address, addressResult) {
   const trx = await knex.transaction()
-  console.log(`Processing address ${address}`)
+  console.log(`${moment()} -- Processing address ${address}`)
   try {
     await updateAddressForBingResult(trx, address, addressResult)
   } catch (err) {

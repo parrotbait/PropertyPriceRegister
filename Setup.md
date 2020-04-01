@@ -23,4 +23,4 @@ To set up a new EC2 instance you need to do the following:
 
   Add the new instance to the Default Security Group.
 
-  See Deploy.md for logging in to AWS
+  See Deploy.md for logging in to AWS.
