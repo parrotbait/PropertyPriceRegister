@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Col, Nav, Navbar, Row, Container, Dropdown, Form, DropdownButton } from 'react-bootstrap'
+import { Col, Button, Nav, Navbar, Row, Container, Dropdown, Form, DropdownButton, Modal, NavItem } from 'react-bootstrap'
 import CountiesDropdown from './CountiesDropdown'
 import GoogleMap from './GoogleMap'
 import * as Price from './Price'
@@ -7,7 +7,8 @@ import debounce from 'lodash/debounce';
 import 'react-dates/initialize';
 import LoadingOverlay from 'react-loading-overlay';
 import { SingleDatePicker } from 'react-dates';
-import { VERTICAL_ORIENTATION, HORIZONTAL_ORIENTATION } from 'react-dates/constants';
+import {isMobile} from 'react-device-detect';
+import { MDBBtn, MDBIcon } from "mdbreact";
 import 'react-dates/lib/css/_datepicker.css';
 
 import './App.css';
@@ -25,14 +26,16 @@ class App extends Component {
     start_date_focussed: false,
     end_date_focussed: false,
     is_loading: true,
+    show_filters: true,
+    show_info: false,
     stores: [],
     query: {
       text: '',
       counties: [],
       minPrice: null,
       maxPrice: null,
-      startDate: '2017-07-01',
-      endDate: "2018-05-01"
+      startDate: '2018-07-01',
+      endDate: "2020-12-01"
     },
     counties: [],
     properties: [],
@@ -180,109 +183,14 @@ class App extends Component {
     return window.google
   }
 
-  render() {
-    return (
-      <>
-        <LoadingOverlay
-                active={this.state.is_loading}
-                spinner
-                text='Loading properties...'
-              >   
-          <Navbar bg="light" expand="lg" sticky="top">
-            <Navbar.Brand>Property Price Register</Navbar.Brand>
-            <Navbar.Collapse id="responsive-navbar-nav"></Navbar.Collapse>
-            <Nav className="mr-auto">
-              <Row>
-                <Col>
-                  <Row>County</Row>
-                  <Row>
-                    <CountiesDropdown 
-                      counties={this.state.counties}
-                      onCountiesSelected={this.onCountiesSelected}/>
-                  </Row>
-                </Col>
-                <Col>
-                  <Row>Start date</Row>
-                  <Row>
-                    <SingleDatePicker
-                      date={moment(this.state.query.startDate, "YYYY-MM-DD")} // momentPropTypes.momentObj or null
-                      onDateChange={this.onStartDateChanged} // PropTypes.func.isRequired
-                      onFocusChange={({ focused }) => this.setState({ start_price_focussed: focused })}
-                      focused={this.state.start_price_focussed} // PropTypes.bool
-                      keepOpenOnDateSelect={false}
-                      enableOutsideDays={false}
-                      isOutsideRange={() => false}
-                      readOnly={true}
-                      small={true}
-                      withFullScreenPortal={true}
-                      numberOfMonths={1}
-                      id="start-date" // PropTypes.string.isRequired,
-                    />
-                  </Row>
-                </Col>
-                <Col>
-                  <Row>End date</Row>
-                  <Row>
-                    <SingleDatePicker
-                      date={moment(this.state.query.endDate, "YYYY-MM-DD")} // momentPropTypes.momentObj or null
-                      onDateChange={this.onEndDateChanged} // PropTypes.func.isRequired
-                      onFocusChange={({ focused }) => this.setState({ end_date_focussed: focused })}
-                      focused={this.state.end_date_focussed} // PropTypes.bool
-                      keepOpenOnDateSelect={false}
-                      enableOutsideDays={false}
-                      isOutsideRange={() => false}
-                      readOnly={true}
-                      withFullScreenPortal={true}
-                      small={true}
-                      numberOfMonths={1}
-                      id="end-date" // PropTypes.string.isRequired,
-                    />
-                  </Row>
-                </Col>
-                <Col>
-                  <Row>
-                    Min Price
-                  </Row>
-                  <Row>
-                    <DropdownButton 
-                          title={this.state.query.minPrice || "Min Price"}
-                          id={`dropdown-variants-min-price`}
-                          key='min-price'
-                          onSelect={this.onMinPriceSelected}
-                        >
-                      {this.getDropdownOptions(this.state.query.minPrice)}
-                    </DropdownButton>
-                  </Row>
-                </Col>
-                <Col>
-                  <Row>
-                    Max Price
-                  </Row>
-                  <Row>
-                    <DropdownButton 
-                      title={this.state.query.maxPrice || "Max Price"}
-                      id={`dropdown-variants-max-price`}
-                      key='max-price'
-                      onSelect={this.onMaxPriceSelected}
-                    >
-                      {this.getDropdownOptions(this.state.query.maxPrice)}
-                    </DropdownButton>
-                  </Row>
-                </Col>
-                <Col>
-                  <Form.Group>
-                    <Form.Label>Search</Form.Label>
-                    <Form.Control type="input" placeholder="Address" value={this.state.query.text} onChange={this.onTextEntered} />
-                  </Form.Group>
-                </Col>
-              </Row>
-            </Nav>
-          </Navbar>      
-          <Container fluid>
-            <Row>
-              <GoogleMap markers={this.state.stores} properties={this.state.properties} propertyLoader={this.propertyLoader} />
-            </Row>
-            <br/>
+  getInfoOverlay = () => {
+    return <Modal centered show={this.state.show_info} className="filter_card" onHide={() => this.setState({ show_info: false })}>
+    <Modal.Header closeButton>
+      <Modal.Title>Why did I do this?</Modal.Title>
+    </Modal.Header>
+    <Modal.Body>  
+          <Container>
+          <br/>
             <span className="text-center">
               <p>
                 A couple of years ago when buying a house I encountered the Property Price Register for the first time.
@@ -303,7 +211,135 @@ class App extends Component {
             </span>
             <br/>
           </Container>
+    </Modal.Body>
+    </Modal>
+  }
+
+  getFilterOverlay = () => {
+    return <Modal centered show={this.state.show_filters} className="filter_card" onHide={() => this.setState({ show_filters: false })}>
+    <Modal.Header closeButton>
+      <Modal.Title>Search Filters</Modal.Title>
+    </Modal.Header>
+    <Modal.Body>  
+      <Container>
+        <Row>
+          <Col>Address: </Col>
+          <Col>
+            <Form.Control type="input" placeholder="Search address" value={this.state.query.text} onChange={this.onTextEntered} />
+          </Col>
+        </Row>
+        <Row>
+        <Col>County</Col>
+            <Col>
+              <CountiesDropdown 
+                counties={this.state.counties}
+                onCountiesSelected={this.onCountiesSelected}/>
+            </Col>
+          </Row>
+          <Row>
+            <Col>Start date</Col>
+            <Col>
+              <SingleDatePicker
+                date={moment(this.state.query.startDate, "YYYY-MM-DD")} // momentPropTypes.momentObj or null
+                onDateChange={this.onStartDateChanged} // PropTypes.func.isRequired
+                onFocusChange={({ focused: focused2 }) => this.setState({ start_price_focussed: focused2 })}
+                focused={this.state.start_price_focussed} // PropTypes.bool
+                keepOpenOnDateSelect={false}
+                enableOutsideDays={false}
+                isOutsideRange={() => false}
+                readOnly={true}
+                small={isMobile}
+                appendToBody={false}
+                numberOfMonths={1}
+                id="filter-start-date" // PropTypes.string.isRequired,
+              />
+            </Col>
+          </Row>
+          <Row>
+            <Col>End date</Col>
+            <Col>
+              <SingleDatePicker
+                date={moment(this.state.query.endDate, "YYYY-MM-DD")} // momentPropTypes.momentObj or null
+                onDateChange={this.onEndDateChanged} // PropTypes.func.isRequired
+                onFocusChange={({ focused: focused2 }) => this.setState({ end_date_focussed: focused2 })}
+                focused={this.state.end_date_focussed} // PropTypes.bool
+                keepOpenOnDateSelect={false}
+                enableOutsideDays={false}
+                isOutsideRange={() => false}
+                readOnly={true}
+                small={isMobile}
+                appendToBody={false}
+                numberOfMonths={1}
+                
+                id="filter-end-date" // PropTypes.string.isRequired,
+              />
+            </Col>
+          </Row>
+          <Row>
+            <Col>
+              Min Price
+            </Col>
+            <Col>
+              <DropdownButton 
+                    title={this.state.query.minPrice || "Select"}
+                    id={`dropdown-variants-min-price`}
+                    key='min-price'
+                    onSelect={this.onMinPriceSelected}
+                  >
+                {this.getDropdownOptions(this.state.query.minPrice)}
+              </DropdownButton>
+            </Col>
+          </Row>
+          <Row>
+            <Col>
+              Max Price
+            </Col>
+            <Col>
+              <DropdownButton 
+                title={this.state.query.maxPrice || "Select"}
+                id={`dropdown-variants-max-price`}
+                key='max-price'
+                onSelect={this.onMaxPriceSelected}
+              >
+                {this.getDropdownOptions(this.state.query.maxPrice)}
+              </DropdownButton>
+            </Col>
+          </Row>
+      </Container>
+      </Modal.Body>
+      </Modal>
+  }
+
+  render() {
+    const filterOverlay = this.getFilterOverlay()
+    const infoOverlay = this.getInfoOverlay()
+    return (
+      <>
+        <LoadingOverlay
+                active={this.state.is_loading}
+                spinner
+                text='Loading properties...'
+              >   
+          <Navbar bg="light" expand="sm" sticky="top"
+          onSelect={(selectedKey) => this.setState({ show_info: true })}>
+            <Navbar.Brand>Property Price Register</Navbar.Brand>
+            <Navbar.Toggle aria-controls="responsive-navbar-nav" />
+            <Navbar.Collapse id="responsive-navbar-nav" className="justify-content-end">
+              <Nav.Link eventKey="link-1">Why</Nav.Link>
+            </Navbar.Collapse>
+            <MDBBtn size="sm" className="ml-auto" onClick={() => this.setState({ show_filters: true })}>
+              <MDBIcon icon="filter" className="mr-1 " /> Filter
+            </MDBBtn>
+          </Navbar> 
+
+          <Container fluid>
+            <Row>
+              <GoogleMap markers={this.state.stores} properties={this.state.properties} propertyLoader={this.propertyLoader} />
+            </Row>
+          </Container>
         </LoadingOverlay>
+        {filterOverlay}
+        {infoOverlay}
       </>
     );
   }

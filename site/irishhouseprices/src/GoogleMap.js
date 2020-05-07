@@ -35,6 +35,7 @@ class GoogleMap extends Component {
             lng: -8.4956548,
         },
         disableDefaultUI: true,
+        gestureHandling: "greedy"
     })
     this.loadMarkers()
   }

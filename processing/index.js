@@ -450,9 +450,11 @@ async function updateAddressForBingResult(trx, existingAddress, bingResult) {
 
   let existingRecord = await trx('properties')
                 .select('*')
-                .where('address', bingResult.address).first()
+                .where('address', bingResult.address)
+                .first()
   if (existingRecord) {
     if (existingRecord.original_address !== existingAddress) {
+      console.log(`Found existing address for bing result ${bingResult.address}`)
       // About to name a record that'll be the same as an existing
       // This will cause an error, so update all sales for that property to match
       // So find all sales for that property and update to the existing record
@@ -473,6 +475,8 @@ async function updateAddressForBingResult(trx, existingAddress, bingResult) {
           }
       }
       return
+    } else {
+      console.log(`Found existing address for bing result ${bingResult.address} but result original address '${existingAddress}' is different '${existingRecord.original_address}'`)
     }
   }
   return trx('properties')
@@ -483,7 +487,7 @@ async function updateAddressForBingResult(trx, existingAddress, bingResult) {
       postcode: bingResult.postcode,
       lat: bingResult.lat,
       lon: bingResult.lon,
-      updated: moment().format('YYYY/MM/DD')
+      updated: moment().format('YYYY/MM/DD HH:mm:ss')
     })
 }
 

@@ -3,7 +3,13 @@
 }
 
 .dropdown-menu {
-  height: auto;
+  height: 300px;
   max-height: 300px;
-  overflow-x: hidden;
+  z-index: 1000;
+  overflow-x: visible;
+  overflow-y: auto;
+}
+
+.filter_card {
+  overflow: visible;
 }

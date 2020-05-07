@@ -23,9 +23,10 @@ Create a shell script called `runBingFind.sh`
   
   docker run -e run_command='find_bing' -v BingDataVolume:/app/bing_data --env-file=.env-processing 392489498504.dkr.ecr.eu-west-1.amazonaws.com/ppr_processing
 
+Move to sudo with `sudo -s`
 Run `crontab -e`
 
-  0 */6 * * * /home/ec2-user/runBingFind.sh >> /var/log/cron.log 2>&1
+  0 */6 * * * /home/ec2-user/runBingFind.sh >> /home/ec2-user/cron.log 2>&1
 
 ## Connecting to RDS DB
 
