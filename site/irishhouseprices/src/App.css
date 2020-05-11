@@ -8,6 +8,15 @@
   z-index: 1000;
   overflow-x: visible;
   overflow-y: auto;
+  width: 100%;
+}
+
+#dropdown-item-button {
+  max-width: 100%;
+  margin-left: 0;
+  text-align: left;
+  white-space: normal;
+  word-break: normal;
 }
 
 .filter_card {

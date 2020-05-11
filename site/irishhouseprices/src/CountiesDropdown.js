@@ -9,20 +9,25 @@ export default class CountiesDropdown extends Component {
     }
     
     onCountySelected = (e) => {
-        let county = this.props.counties[e]
-        let selected = this.state.selected
-        let index = selected.indexOf(county.id)
-        if (index !== -1) {
-            selected.splice(index, 1);
-        } else {
-            selected.push(county.id)
-        }
-        let selectedCounties = this.props.counties.filter(x => selected.indexOf(x.id) !== -1)
-        this.props.onCountiesSelected(selectedCounties)
+      const county = this.props.counties[e]
+      const selected = this.state.selected
+      const index = selected.indexOf(county.id)
+      if (index !== -1) {
+          selected.splice(index, 1);
+      } else {
+          selected.push(county.id)
+      }
+      const selectedCounties = this.props.counties.filter(x => selected.indexOf(x.id) !== -1)
+      this.props.onCountiesSelected(selectedCounties)
     }
 
-    state = {
-      };
+    getSelectedCounties = () => {
+      return this.props.counties.filter((county, index) => {
+        return this.state.selected.indexOf(county.id) !== -1
+      }).map(county => {
+        return county.name
+      })
+    }
   
     outputCounties = () => {
         return this.props.counties.map((county, index) => {
@@ -32,10 +37,19 @@ export default class CountiesDropdown extends Component {
             return <Dropdown.Item key={index} eventKey={index} id={index} as="button">{county.name}</Dropdown.Item>
           })
     }
+
+    getTitle = () => {
+      const counties = this.getSelectedCounties()
+      if (counties.length === 0) {
+        return "Select"
+      }
+      return counties.join(", ")
+    }
+
     render() {
-    return (
-        <DropdownButton id="dropdown-item-button" onSelect={this.onCountySelected} title="Select">
-            <Dropdown.Menu onSelect={function(e){alert(e);}}>
+      return (
+        <DropdownButton id="dropdown-item-button" className="justify-content-end" onSelect={this.onCountySelected} title={this.getTitle()}>
+            <Dropdown.Menu>
                 {this.outputCounties()} 
             </Dropdown.Menu>
         </DropdownButton>

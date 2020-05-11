@@ -29,10 +29,10 @@ class GoogleMap extends Component {
 
   loadMap = () => {
     this.googleMap = new window.google.maps.Map(this.googleMapRef.current, {
-        zoom: 8,
+        zoom: 9,
         center: {
-            lat: 53.0847767,
-            lng: -8.4956548,
+            lat: 53.350140,
+            lng: -6.266155,
         },
         disableDefaultUI: true,
         gestureHandling: "greedy"
