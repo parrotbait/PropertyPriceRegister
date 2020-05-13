@@ -41,7 +41,6 @@ export default class CountiesDropdown extends Component {
       }
       const selectedCounties = Object.values(selected)
       this.props.onCountiesSelected(selectedCounties)
-      console.log(JSON.stringify(selected))
       this.setState({ selected: selected, title: this.getTitle(selected)})
     }
 
