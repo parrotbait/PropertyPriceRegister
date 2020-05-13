@@ -58,9 +58,9 @@ class PropertyService {
     }
     
     if (params.county) {
-      query.whereRaw('LOWER(`property_county`.`name`) = ?', [
-        params.county.toLowerCase()
-      ])
+
+      const counties = params.county.split(',').map(county => county.toLowerCase())
+      query.whereRaw('LOWER(`property_county`.`name`) IN (?)', [counties])
     }
     
     if (params.query) {

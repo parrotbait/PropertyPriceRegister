@@ -97,6 +97,7 @@ class App extends Component {
     return <FiltersView 
             visible={this.state.show_filters} 
             counties={this.state.counties} 
+            query={this.query}
             closeClicked={() => this.setState({ show_filters: false })} 
             onFiltersApplied={query => this.onFiltersApplied(query)} />
   }
@@ -172,7 +173,7 @@ class App extends Component {
       if (query.length !== 0) {
           query += "&";
       }
-      query += "county=" + this.query.counties.join(',');
+      query += "county=" + this.query.counties.map(county => county.name).join(',');
     }
 
     if (this.query.minPrice) {

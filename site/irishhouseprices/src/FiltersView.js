@@ -21,14 +21,7 @@ export default class FiltersView extends Component {
     this.state = { selected: [],
       start_date_focussed: false,
       end_date_focussed: false,
-      query: {
-        text: '',
-        counties: [],
-        minPrice: null,
-        maxPrice: null,
-        startDate: defaultStartDate,
-        endDate: defaultEndtDate
-      },
+      query: props.query,
       counties: []};
   }
 
@@ -58,8 +51,7 @@ export default class FiltersView extends Component {
         endDate: prevState.query.endDate,
         minPrice: prevState.query.minPrice,
         maxPrice: prevState.query.maxPrice,
-        counties: [
-          counties.map(x => x.name) ] 
+        counties: counties
         }
       }))
   };
@@ -181,6 +173,7 @@ export default class FiltersView extends Component {
           <Col className="justify-content-end">
             <CountiesDropdown 
               counties={this.props.counties}
+              selectedCounties={this.state.query.counties}
               onCountiesSelected={this.onCountiesSelected}
               className="p-0 m-0"
               />
