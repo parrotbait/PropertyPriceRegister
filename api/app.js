@@ -4,9 +4,12 @@ const express = require('express')
 const cors = require('cors')
 const { Model } = require('objection')
 const knex = require('./knex/knex.js')
+const jwt = require('jsonwebtoken');
+const bodyParser = require('body-parser');
 
 const app = express()
 app.use(cors())
+app.use(bodyParser.json());
 
 Model.knex(knex)
 
@@ -26,3 +29,4 @@ exports.context = context
 require('./api/property')
 require('./api/properties')
 require('./api/counties')
+require('./auth/auth')
