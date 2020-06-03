@@ -23,6 +23,8 @@ app.listen(process.env.PORT, () =>
   )
 )
 
+process.env.TZ = "UTC+0"
+
 const context = { knex, app }
 exports.context = context
 

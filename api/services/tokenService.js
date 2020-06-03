@@ -3,17 +3,18 @@ const moment = require('moment')
 class TokenService {
   constructor(tokenModel) {
     this.tokenModel = tokenModel
+    this.expiration_seconds = 3600
   }
 
   async save(params) {
-    const now = new Date()
-    const expiration = moment(now).clone().add(1, 'hours')
+    const now = moment(new Date())
+    const expiration = nowUtc.clone().add(this.expiration_seconds, 'seconds')
     return this.tokenModel
       .query()
       .insert({
         access_token: params.access_token,
         access_key: params.access_key,
-        start_date: moment(now).format("YYYY-MM-DD HH:mm:ss"),
+        start_date: nowUtc.format("YYYY-MM-DD HH:mm:ss"),
         end_date: expiration.format("YYYY-MM-DD HH:mm:ss")
       })
   }
