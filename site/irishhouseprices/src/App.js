@@ -10,7 +10,8 @@ import 'react-dates/lib/css/_datepicker.css';
 
 import './App.css';
 
-const baseUrl = "http://localhost:4000/api"
+const baseUrl = "http://localhost:4000"
+const apiUrl = `${baseUrl}/api`
 
 class App extends Component {
   
@@ -19,7 +20,7 @@ class App extends Component {
     counties: [],
     minPrice: null,
     maxPrice: null,
-    startDate: '2018-07-01',
+    startDate: '2020-01-01',
     endDate: "2020-12-01"
   };
 
@@ -30,7 +31,7 @@ class App extends Component {
     selectedProperty: {},
     
     is_loading: true,
-    show_filters: true,
+    show_filters: false,
     show_info: false,
     stores: [],
     counties: [],
@@ -38,9 +39,30 @@ class App extends Component {
   };
 
   propertyLoader = (id, callback) => {
-    const url = baseUrl + `/property?id=${id}`;
+    const token = localStorage.getItem('token')
+    if (!token) {
+      this.fetchToken()
+      .then(() => this.propertyLoader(id, callback))
+      .catch(err => console.log(err))
+      return
+    }
+    const url = apiUrl + `/property?id=${id}`;
     const request = new Request(url)
-    fetch(request, {mode: 'cors'})
+    fetch(request, {mode: 'cors', headers: {
+        'Authorization': `Bearer ${token}`
+    }})
+    .catch(err => {
+      console.log(JSON.stringify(err))
+    })
+    .then(res => {
+      if (!res.ok && (res.status === 401 || res.status === 403)) {
+        localStorage.removeItem('token')
+        this.fetchToken()
+        .then(() => this.propertyLoader(id, callback))
+        .catch(err => console.log(err))
+      }
+      return res
+    })
     .then(res => res.json())
     .then((property) => {
       callback(property)
@@ -137,16 +159,68 @@ class App extends Component {
   }
 
   componentDidMount() {
-    this.refreshProperties()
-    this.fetchCounties()
+    this.setState({
+      is_loading: true
+    });
+
+    this.fetchToken()
+    .then(() => {
+      this.refreshProperties()
+      this.fetchCounties()
+    })
 
     this.delayReload = debounce(this.delayReload, 500)
   }
 
-  fetchCounties = () => {
-    var url = baseUrl + "/counties";
+  fetchToken = async () => {
+    // Just use the token if present
+    const token = localStorage.getItem('token')
+    if (token) {
+      return new Promise((resolve) => {
+        resolve()
+      })
+    }
+    const url = baseUrl + "/authorize";
     var request = new Request(url)
-    fetch(request, {mode: 'cors'})
+    return fetch(request, {
+      mode: 'cors', 
+      method: 'POST', 
+      headers: {
+        'Content-Type': 'application/json;charset=utf-8'
+      },
+      body: JSON.stringify({
+        access_key: 'ad0a2d35a2ab8f39932e2e25ca8717be2b7be995c34b99e2322f39e2aa5c0750f8cac30ca93265bc03f5259c4e7e44238cfec0c10cb71901c191979694c4eb95', 
+        access_secret: '5b16a9b812c4ba1e65727a699632bc026615a950'}
+      )
+    })
+    .then(res => res.json())
+    .then((token) => {
+      localStorage.setItem('token', token.access_token)
+    })
+  }
+
+  fetchCounties = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      this.fetchToken()
+      .then(() => this.fetchCounties())
+      .catch(err => console.log(err))
+      return
+    }
+    const url = apiUrl + "/counties";
+    const request = new Request(url)
+    fetch(request, {mode: 'cors', headers: {
+        'Authorization': `Bearer ${token}`
+    }})
+    .then(res => {
+      if (!res.ok && (res.status === 401 || res.status === 403)) {
+        localStorage.removeItem('token')
+        this.fetchToken()
+        .then(() => this.fetchCounties())
+        .catch(err => console.log(err))
+      }
+      return res
+    })
     .then(res => res.json())
     .then((counties) => {
       this.setState({ counties: counties })
@@ -157,8 +231,15 @@ class App extends Component {
     this.setState({
       is_loading: true
     });
-    var url = baseUrl + "/properties";
-    var query = "";
+
+    const token = localStorage.getItem('token')
+    if (!token) {
+      this.fetchToken().then(() => this.refreshProperties())
+      return
+    }
+
+    let url = apiUrl + "/properties";
+    let query = "";
     if (this.query.startDate) {
         query = "start_date=" + this.query.startDate
     }
@@ -201,8 +282,19 @@ class App extends Component {
         url = url + "?" + query;
     }
     //console.log("url - " + url)
-    var request = new Request(url)
-    fetch(request, {mode: 'cors'})
+    const request = new Request(url)
+    fetch(request, {mode: 'cors', headers: {
+      'Authorization': `Bearer ${token}`
+  }})
+    .then(res => {
+      if (!res.ok && (res.status === 401 || res.status === 403)) {
+        localStorage.removeItem('token')
+        this.fetchToken()
+        .then(() => this.refreshProperties())
+        .catch(err => console.log(err))
+      }
+      return res
+    })
     .then(res => res.json())
     .then((properties) => {
       let markers = []

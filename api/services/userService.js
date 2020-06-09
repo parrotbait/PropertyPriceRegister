@@ -46,6 +46,7 @@ class UserService {
         query.where('access_secret',  params.access_secret)
       }
     }
+    query.where('activated', params.allow_inactive || true)
     return query
   }
 }

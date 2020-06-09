@@ -14,8 +14,6 @@ let defaultStartDate = '2018-07-01'
 let defaultEndtDate = '2020-12-01'
 
 export default class FiltersView extends Component {
-      
-
   constructor(props, context) {
     super(props, context);
     this.state = { selected: [],

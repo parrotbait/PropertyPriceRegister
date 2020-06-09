@@ -28,7 +28,14 @@ getTokenJson = (token, tokenService) => {
 context.app.post('/authorize', async (req, res) => {
   // Read username and password from request body
   const { access_key, access_secret } = req.body;
-  
+  if (!access_key) {
+    res.sendStatus(400).end('Missing access_key')
+    return 
+  }
+  if (!access_secret) {
+    res.sendStatus(400).end('Missing access_secret')
+    return 
+  }
   const user = await userService.fetchOne({ access_key, access_secret})
   if (user && Object.keys(user).length !== 0) {
     const existing = await tokenService.fetchOne({ access_key })
@@ -43,9 +50,15 @@ context.app.post('/authorize', async (req, res) => {
 
     // Generate an access token
     const token = jwt.sign({ username: user.token }, accessTokenSecret);
-    const newToken = await tokenService.save({ access_token: token, access_key: access_key })
-    setCommonHeaders(res)
-    res.json(getTokenJson(newToken, tokenService))
+    tokenService.save({ access_token: token, access_key: access_key }).then(newToken => {
+      setCommonHeaders(res)
+      res.json(getTokenJson(newToken, tokenService))
+    })
+    .catch(err => {
+      console.log(JSON.stringify(err))
+      res.sendStatus(503)
+    })
+    
   } else {
     res.send('Access key or secret incorrect');
   }

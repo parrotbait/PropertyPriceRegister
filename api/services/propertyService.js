@@ -28,13 +28,13 @@ class PropertyService {
         },
         queryFilters: builder => {
           if (params.start_date) {
-            const date = moment(params.start_date, 'YYYY-MM-DD', true)
+            const date = moment(params.start_date, 'YYYY-M-D', true)
             if (date.isValid()) {
               builder.where('date', '>=', date.toISOString())
             }
           }
           if (params.end_date) {
-            const date = moment(params.end_date, 'YYYY-MM-DD', true)
+            const date = moment(params.end_date, 'YYYY-M-D', true)
             if (date.isValid()) {
               builder.where('date', '<=', date.toISOString())
             }
@@ -47,7 +47,6 @@ class PropertyService {
             const number = Number(params.max_price)
             builder.where('price', '<=', number)
           }
-          //builder.where('species', 'dog');
         }
       })
       .joinRelated('property_county')
@@ -58,7 +57,6 @@ class PropertyService {
     }
     
     if (params.county) {
-
       const counties = params.county.split(',').map(county => county.toLowerCase())
       query.whereRaw('LOWER(`property_county`.`name`) IN (?)', [counties])
     }

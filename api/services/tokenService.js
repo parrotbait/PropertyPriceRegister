@@ -8,13 +8,13 @@ class TokenService {
 
   async save(params) {
     const now = moment(new Date())
-    const expiration = nowUtc.clone().add(this.expiration_seconds, 'seconds')
+    const expiration = now.clone().add(this.expiration_seconds, 'seconds')
     return this.tokenModel
       .query()
       .insert({
         access_token: params.access_token,
         access_key: params.access_key,
-        start_date: nowUtc.format("YYYY-MM-DD HH:mm:ss"),
+        start_date: now.format("YYYY-MM-DD HH:mm:ss"),
         end_date: expiration.format("YYYY-MM-DD HH:mm:ss")
       })
   }
