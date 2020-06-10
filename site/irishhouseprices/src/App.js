@@ -10,7 +10,7 @@ import 'react-dates/lib/css/_datepicker.css';
 
 import './App.css';
 
-const baseUrl = "http://localhost:4000"
+const baseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:4000"
 const apiUrl = `${baseUrl}/api`
 
 class App extends Component {
@@ -189,8 +189,8 @@ class App extends Component {
         'Content-Type': 'application/json;charset=utf-8'
       },
       body: JSON.stringify({
-        access_key: 'ad0a2d35a2ab8f39932e2e25ca8717be2b7be995c34b99e2322f39e2aa5c0750f8cac30ca93265bc03f5259c4e7e44238cfec0c10cb71901c191979694c4eb95', 
-        access_secret: '5b16a9b812c4ba1e65727a699632bc026615a950'}
+        access_key: process.env.REACT_APP_ACCESS_KEY || 'ad0a2d35a2ab8f39932e2e25ca8717be2b7be995c34b99e2322f39e2aa5c0750f8cac30ca93265bc03f5259c4e7e44238cfec0c10cb71901c191979694c4eb95', 
+        access_secret: process.env.REACT_APP_ACCESS_SECRET || '5b16a9b812c4ba1e65727a699632bc026615a950'}
       )
     })
     .then(res => res.json())

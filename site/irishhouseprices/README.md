@@ -1,3 +1,5 @@
+[![Netlify Status](https://api.netlify.com/api/v1/badges/a6b3f46c-b8c1-4fd7-92ba-209383d5dd56/deploy-status)](https://app.netlify.com/sites/irish-property-price-register/deploys)
+
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts
