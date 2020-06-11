@@ -8,7 +8,7 @@ const userService = new UserService(User)
 
 async function createUser(req, res) {
   // Read username and password from request body
-  const { first_name, second_name, email, password } = req.body;
+  const { first_name, second_name, email, password, host } = req.body;
 
   const user = await userService.fetchOne({ email: email })
   // Filter user from the users array by username and password
@@ -17,7 +17,7 @@ async function createUser(req, res) {
     const access_key = crypto.createHmac('sha512', email).digest("hex")
     const access_secret = sha1(password)
     
-    const newUser = await userService.add({ first_name, second_name, email, access_key, access_secret: access_secret })
+    const newUser = await userService.add({ first_name, second_name, email, access_key, access_secret: access_secre, origin: host })
     if (newUser && Object.keys(newUser).length !== 0) {
       res.setHeader('Content-Type', 'application/json');
       res.json({

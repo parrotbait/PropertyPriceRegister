@@ -22,7 +22,8 @@ class UserService {
       second_name: params.second_name,
       email: params.email,
       access_key: params.access_key,
-      access_secret: params.access_secret
+      access_secret: params.access_secret,
+      origin: params.origin
     })
   }
 
@@ -30,7 +31,7 @@ class UserService {
     const query = this.userModel
       .query()
       .select(
-        'id', 'uuid', 'first_name', 'second_name', 'email', 'access_key', 'access_secret'
+        'id', 'uuid', 'first_name', 'second_name', 'email', 'access_key', 'access_secret', 'origin'
       )
 
     if (params.email) {
@@ -47,7 +48,7 @@ class UserService {
       }
     }
     query.where('activated', params.allow_inactive || true)
-    return query
+    return query.first()
   }
 }
 

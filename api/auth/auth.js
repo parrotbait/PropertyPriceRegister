@@ -30,7 +30,7 @@ context.app.post('/authorize', async (req, res) => {
   const { access_key, access_secret } = req.body;
   if (!access_key) {
     res.sendStatus(400).end('Missing access_key')
-    return 
+    return
   }
   if (!access_secret) {
     res.sendStatus(400).end('Missing access_secret')
@@ -46,6 +46,17 @@ context.app.post('/authorize', async (req, res) => {
         res.json(getTokenJson(existing, tokenService))
         return 
       }
+    }
+
+    if (!req.headers.origin ) {
+      console.log('Missing origin header')
+      res.sendStatus(400).end('Missing origin header')
+      return
+    }
+
+    if (user.origin !== '*' && req.headers.origin.indexOf(user.origin) === -1) {
+      res.sendStatus(501).end(`Invalid origin, ${req.headers.origin}`)
+      return
     }
 
     // Generate an access token
