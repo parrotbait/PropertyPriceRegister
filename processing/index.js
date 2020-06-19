@@ -453,14 +453,15 @@ async function updateAddressForBingResult(trx, existingAddress, bingResult) {
                 .where('address', bingResult.address)
                 .first()
   if (existingRecord) {
-    if (existingRecord.original_address !== existingAddress) {
+    if (existingRecord.original_address === existingAddress) {
       console.log(`Found existing address for bing result ${bingResult.address}`)
       // About to name a record that'll be the same as an existing
       // This will cause an error, so update all sales for that property to match
       // So find all sales for that property and update to the existing record
       let addressToUpdate = await trx('properties')
                 .select('*')
-                .where('original_address', existingAddress).first()
+                .where('original_address', existingAddress)
+                .first()
       if (addressToUpdate) {
         if (addressToUpdate.id !== existingRecord.id) {
           console.log(`Matching existing address property: with address ${existingRecord.address} - with original PPR address ${existingRecord.original_address} to address ${bingResult.address}`)
@@ -474,7 +475,7 @@ async function updateAddressForBingResult(trx, existingAddress, bingResult) {
             .del()
           }
       }
-      return
+      return Promise.resolve(true)
     } else {
       console.log(`Found existing address for bing result ${bingResult.address} but result original address '${existingAddress}' is different '${existingRecord.original_address}'`)
     }
@@ -487,6 +488,7 @@ async function updateAddressForBingResult(trx, existingAddress, bingResult) {
       postcode: bingResult.postcode,
       lat: bingResult.lat,
       lon: bingResult.lon,
+      source: 'bing',
       updated: moment().format('YYYY/MM/DD HH:mm:ss')
     })
 }
