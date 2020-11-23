@@ -177,7 +177,7 @@ async function parseGeocodeSuccessResultData(response, onAddressDeterminedCallba
   }
   const entities = feed[0].elements
   if (!Array.isArray(entities) || entities.length === 0) {
-    console.log('Expected 5 elements returned!')
+    console.log('Missing or invalid size entities array')
     throw new Error('Missing or invalid size entities array')
   }
 
@@ -195,9 +195,9 @@ async function parseGeocodeSuccessResultData(response, onAddressDeterminedCallba
     for (let j = 0; j < elements.length; j += 1) {
       const elem = elements[j]
       if (elem.name === 'GeocodeResponse') {
-        if (elem.elements.length !== 5) {
-          console.log('Expected 5 elements returned!')
-          process.exit()
+        if (elem.elements.length !== 4) {
+          console.log('Expected 5 elements returned! Got: ' + elem.elements.length)
+          break
         }
 
         const { attributes } = elem
@@ -220,7 +220,7 @@ async function parseGeocodeSuccessResultData(response, onAddressDeterminedCallba
         // let geocodePoint = elem.elements[2]
         // let address = elem.elements[3]
         // <Point Latitude="53.37383" Longitude="-6.5989" />
-        const point = elem.elements[4]
+        const point = elem.elements[3]
         const lat = point.attributes.Latitude
         const lon = point.attributes.Longitude
 

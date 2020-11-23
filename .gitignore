@@ -116,3 +116,4 @@ bing_data/
 backup/
 phpMyAdmin/
 config.ini
+processing/.env-processing

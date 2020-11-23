@@ -14,5 +14,3 @@ COPY . .
 RUN npm install
 
 CMD npm run $run_command
-#CMD ["echo", "npm run ${run_command}"]
-#CMD ["sh", "-c", "npm run ${RUN_COMMAND}"]
