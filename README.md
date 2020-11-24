@@ -1,6 +1,6 @@
 # House Price Generator
 
-## Description
+## Description
 
 This project takes a local Property Price Register CSV file from the https://propertypriceregister.ie website, parses, performs reverse geocoding and inserts/updates records into a remote database (I use RDS).
 
@@ -20,11 +20,11 @@ Unfortunately I haven't really spent too much time documenting everything, it wa
 
 ### Pre-requisites
 
-Homebrew
-Node (my machine is running 8.14.0 so try to have that)
-NPM
-Mysql
-JDK (for mysql)
+* Homebrew
+* Node (my machine is running 8.14.0 so try to have that)
+* NPM
+* Mysql
+* JDK (for mysql)
 
 ## Usage
 
