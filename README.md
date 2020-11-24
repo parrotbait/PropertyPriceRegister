@@ -4,6 +4,9 @@
 
 This project takes a local Property Price Register CSV file from the https://propertypriceregister.ie website, parses, performs reverse geocoding and inserts/updates records into a remote database (I use RDS).
 
+The live version of this repo is here: http://pprsite.s3-website-eu-west-1.amazonaws.com/
+REST API is http://ec2-34-247-160-30.eu-west-1.compute.amazonaws.com - needs registration and auth so please get in touch if interested.
+
 This CSV is terrible. See my fun [rant](https://medium.com/@parrotbait/the-property-price-register-a-rant-f55ca421e798) on it.
 The JS attempts to go through the records, salvage what it can and clean up the data a little.
 
