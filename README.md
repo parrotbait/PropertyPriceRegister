@@ -26,7 +26,7 @@ NPM
 Mysql
 JDK (for mysql)
 
-## Usage
+## Usage
 
 ### Processing
 
